@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- run this via cli -->
+<!-- dotnet publish -p:PublishProfile=FolderProfile -c Release -->
+
+<!--
+https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/visual-studio-publish-profiles?view=aspnetcore-10.0#folder-publish-example -->
+<!--
+https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/visual-studio-publish-profiles?view=aspnetcore-10.0#selective-file-inclusion -->
+<Project>
+  <PropertyGroup>
+    <WebPublishMethod>FileSystem</WebPublishMethod>
+    <PublishProvider>FileSystem</PublishProvider>
+    <PublishProtocol>FileSystem</PublishProtocol>
+    <PublishDir>$(MSBuildProjectDirectory)\bin\Publish</PublishDir>
+
+    <!-- <Platform>Any CPU</Platform> -->
+    <Configuration>Release</Configuration>
+    <!-- <TargetFramework>"netx.x"</TargetFramework> -->
+
+    <LaunchSiteAfterPublish>True</LaunchSiteAfterPublish>
+    <DeleteExistingFiles>True</DeleteExistingFiles>
+    <ExcludeApp_Data>False</ExcludeApp_Data>
+
+    <SiteUrlToLaunchAfterPublish />
+    <PublishFramework />
+
+    <!-- disable generate web.config when publish -->
+    <IsTransformWebConfigDisabled>True</IsTransformWebConfigDisabled>
+  </PropertyGroup>
+
+  <!--
+  https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/visual-studio-publish-profiles?view=aspnetcore-10.0#exclude-files -->
+  <ItemGroup>
+    <Content Include="Template/**">
+      <!-- <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory> -->
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="*.json" CopyToPublishDirectory="Never" />
+    <Content Update="*.config" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <!-- $(get string from tag content), @(get list from tag content)-->
+  <Target Name="CreateCustomDir" AfterTargets="Publish">
+    <MakeDir Directories="$(PublishDir)ClientApp" />
+  </Target>
+</Project>
