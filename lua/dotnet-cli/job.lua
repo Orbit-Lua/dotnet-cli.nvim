@@ -76,7 +76,7 @@ M.get_netcore_pid = function(proj)
     }
   end
 
-  local pid = parsers.parse_first_pid(vim.fn.system(cmd))
+  local pid = parsers.first_pid(vim.fn.system(cmd))
   return pid
 end
 
