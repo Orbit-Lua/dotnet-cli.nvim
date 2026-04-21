@@ -22,6 +22,7 @@ M.spec = {
         project.select_csproj(c, function(f, c2)
           local cmd = { "dotnet", "watch", mode, "--project", f }
           job.run(cmd, c2)
+          project._current_running_project = f
         end)
       end,
     })

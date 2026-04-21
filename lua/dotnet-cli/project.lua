@@ -3,6 +3,22 @@
 
 local M = {}
 
+M._current_running_project = nil
+
+---@return string?
+M.get_current_running_project = function()
+  return M._current_running_project
+end
+
+---@return string?
+M.get_current_running_project_name = function()
+  local proj = M.get_current_running_project()
+  if not proj then
+    return nil
+  end
+  return vim.fn.fnamemodify(proj, ":t:r")
+end
+
 ---@return string[]
 M.get_csproj_files = function()
   return vim.fn.glob("*.csproj", false, true)

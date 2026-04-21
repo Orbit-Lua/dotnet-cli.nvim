@@ -82,4 +82,17 @@ M.sdk_versions = function(lines)
   return versions
 end
 
+M.first_pid = function(output)
+  if type(output) ~= "string" then
+    return nil
+  end
+
+  local match = string.match(output, "%d+")
+
+  if match then
+    return tonumber(match)
+  end
+  return nil
+end
+
 return M

@@ -13,6 +13,7 @@ M.spec = {
   action = function(ctx)
     project.select_csproj(ctx, function(f, c)
       job.run({ "dotnet", "run", "--project", f }, c)
+      project._current_running_project = f
     end)
   end,
 }
