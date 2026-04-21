@@ -5,13 +5,24 @@ local parsers = require("dotnet-cli.parsers")
 
 local M = {}
 
+---@class JobOpts
+---@field ctx_clear boolean? whether to clear the context before running the job (default: true)
+
 ---Run a shell command, streaming stdout/stderr into the UI output panel.
 ---@param cmd string[]
 ---@param ctx CometCtx
 ---@param on_complete? fun(ctx: CometCtx) called on exit-code 0
+---@param opts? JobOpts
 ---@return number job_id
-M.run = function(cmd, ctx, on_complete)
-  ctx.clear()
+M.run = function(cmd, ctx, on_complete, opts)
+  opts = vim.tbl_deep_extend("force", {
+    ctx_clear = true,
+  }, opts or {})
+
+  if opts.ctx_clear then
+    ctx.clear()
+  end
+
   ctx.append("$ " .. table.concat(cmd, " "))
   ctx.append("")
 
@@ -33,6 +44,9 @@ M.run = function(cmd, ctx, on_complete)
             on_complete(ctx)
           end)
         end
+        vim.schedule(function()
+          ctx.done()
+        end)
       else
         ctx.append("✗  Failed  (exit code " .. code .. ")")
       end

@@ -60,7 +60,13 @@ M.spec = {
   desc = "dotnet publish",
   action = function(ctx)
     project.select_csproj(ctx, function(f, c)
-      job.run(M.get_cmd(f), c)
+      local job_id = job.run(M.get_cmd(f), c)
+
+      ctx.set_abort(function()
+        vim.fn.jobstop(job_id)
+        ctx.append("\n[Process Terminated by User]")
+        ctx.set_abort(nil)
+      end)
     end)
   end,
 }

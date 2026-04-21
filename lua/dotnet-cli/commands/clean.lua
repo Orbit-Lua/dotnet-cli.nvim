@@ -12,7 +12,13 @@ M.spec = {
   desc = "dotnet clean",
   action = function(ctx)
     project.select_csproj(ctx, function(f, c)
-      job.run({ "dotnet", "clean", f }, c)
+      local job_id = job.run({ "dotnet", "clean", f }, c)
+
+      ctx.set_abort(function()
+        vim.fn.jobstop(job_id)
+        ctx.append("\n[Process Terminated by User]")
+        ctx.set_abort(nil)
+      end)
     end)
   end,
 }

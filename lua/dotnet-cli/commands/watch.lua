@@ -21,8 +21,14 @@ M.spec = {
         local mode = item._raw
         project.select_csproj(c, function(f, c2)
           local cmd = { "dotnet", "watch", mode, "--project", f }
-          job.run(cmd, c2)
+          local job_id = job.run(cmd, c2)
           project._current_running_project = f
+
+          ctx.set_abort(function()
+            vim.fn.jobstop(job_id)
+            ctx.append("\n[Process Terminated by User]")
+            ctx.set_abort(nil)
+          end)
         end)
       end,
     })
