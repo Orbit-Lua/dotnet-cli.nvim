@@ -61,7 +61,7 @@ M.spec = {
   action = function(ctx)
     project.select_csproj(ctx, function(f, c)
       local job_id = job.run(M.get_cmd(f), c)
-      ctx.start_async_task(job_id)
+      ctx:start_async_task(job_id)
     end)
   end,
 }

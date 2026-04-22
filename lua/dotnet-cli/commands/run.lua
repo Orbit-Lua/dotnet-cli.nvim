@@ -14,7 +14,7 @@ M.spec = {
     project.select_csproj(ctx, function(f, c)
       local job_id = job.run({ "dotnet", "run", "--project", f }, c)
       project._current_running_project = f
-      ctx.start_async_task(job_id)
+      ctx:start_async_task(job_id)
     end)
   end,
 }

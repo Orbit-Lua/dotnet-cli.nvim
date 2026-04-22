@@ -26,7 +26,7 @@ M.spec = {
     end
 
     if job_id then
-      ctx.start_async_task(job_id)
+      ctx:start_async_task(job_id)
     end
   end,
 }

@@ -49,6 +49,7 @@ M.run = function(cmd, ctx, on_complete, opts)
         end)
       else
         ctx.append("✗  Failed  (exit code " .. code .. ")")
+        ctx.error()
       end
     end,
   })

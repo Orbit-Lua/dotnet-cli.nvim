@@ -23,7 +23,7 @@ M.spec = {
           local cmd = { "dotnet", "watch", mode, "--project", f }
           local job_id = job.run(cmd, c2)
           project._current_running_project = f
-          ctx.start_async_task(job_id)
+          ctx:start_async_task(job_id)
         end)
       end,
     })

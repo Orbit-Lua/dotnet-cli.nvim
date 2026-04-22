@@ -34,7 +34,7 @@ M.spec = {
         local config = item._raw
         project.select_csproj(c, function(f, c2)
           local job_id = job.run(M.get_cmd(f, config), c2)
-          ctx.start_async_task(job_id)
+          ctx:start_async_task(job_id)
         end)
       end,
     })
