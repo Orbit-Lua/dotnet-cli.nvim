@@ -34,12 +34,7 @@ M.spec = {
         local config = item._raw
         project.select_csproj(c, function(f, c2)
           local job_id = job.run(M.get_cmd(f, config), c2)
-
-          ctx.set_abort(function()
-            vim.fn.jobstop(job_id)
-            ctx.append("\n[Process Terminated by User]")
-            ctx.set_abort(nil)
-          end)
+          ctx.start_async_task(job_id)
         end)
       end,
     })

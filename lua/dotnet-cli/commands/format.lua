@@ -26,11 +26,7 @@ M.spec = {
     end
 
     if job_id then
-      ctx.set_abort(function()
-        vim.fn.jobstop(job_id)
-        ctx.append("\n[Process Terminated by User]")
-        ctx.set_abort(nil)
-      end)
+      ctx.start_async_task(job_id)
     end
   end,
 }

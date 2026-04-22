@@ -23,12 +23,7 @@ M.spec = {
           local cmd = { "dotnet", "watch", mode, "--project", f }
           local job_id = job.run(cmd, c2)
           project._current_running_project = f
-
-          ctx.set_abort(function()
-            vim.fn.jobstop(job_id)
-            ctx.append("\n[Process Terminated by User]")
-            ctx.set_abort(nil)
-          end)
+          ctx.start_async_task(job_id)
         end)
       end,
     })

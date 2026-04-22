@@ -13,12 +13,7 @@ M.spec = {
   action = function(ctx)
     project.select_csproj(ctx, function(f, c)
       local job_id = job.run({ "dotnet", "restore", f }, c)
-
-      ctx.set_abort(function()
-        vim.fn.jobstop(job_id)
-        ctx.append("\n[Process Terminated by User]")
-        ctx.set_abort(nil)
-      end)
+      ctx.start_async_task(job_id)
     end)
   end,
 }
