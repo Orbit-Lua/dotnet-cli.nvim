@@ -11,7 +11,7 @@ M.spec = {
   icon_hl = "DiagnosticHint",
   desc = "manage NuGet package sources",
   action = function(ctx)
-    ctx.select({
+    ctx:select({
       { _raw = "list", icon = "󰈚 ", icon_hl = "Comment", name = "List Sources" },
       { _raw = "add", icon = "󰐕 ", icon_hl = "DiagnosticOk", name = "Add Source" },
       { _raw = "remove", icon = "󰍴 ", icon_hl = "DiagnosticError", name = "Remove Source" },
@@ -46,16 +46,16 @@ M.spec = {
         end
 
         -- remove / enable / disable: pick source(s), run action
-        c.clear()
+        c:clear()
         local raw, ok = job.run_sync({ "dotnet", "nuget", "list", "source" })
         if not ok then
-          c.append("Failed to list NuGet sources.")
+          c:append("Failed to list NuGet sources.")
           return
         end
 
         local sources = parsers.nuget_sources(raw)
         if #sources == 0 then
-          c.append("No NuGet sources found.")
+          c:append("No NuGet sources found.")
           return
         end
 
@@ -70,32 +70,32 @@ M.spec = {
           })
         end
 
-        c.select(src_items, {
+        c:select(src_items, {
           title = action:sub(1, 1):upper() .. action:sub(2) .. " Source",
           multi_select = true,
           on_select = function(selected, c2)
             local failed = 0
-            c2.clear()
+            c2:clear()
             for idx, src_item in ipairs(selected) do
               local cmd = { "dotnet", "nuget", action, "source", src_item._raw }
-              c2.append("$ " .. table.concat(cmd, " "))
+              c2:append("$ " .. table.concat(cmd, " "))
               local out, cmd_ok = job.run_sync(cmd)
               if not cmd_ok then
                 failed = failed + 1
-                c2.append("✗  Failed: " .. src_item._raw)
+                c2:append("✗  Failed: " .. src_item._raw)
               else
-                c2.write(out)
-                c2.append("✓  " .. action .. ": " .. src_item._raw)
+                c2:write(out)
+                c2:append("✓  " .. action .. ": " .. src_item._raw)
               end
               if idx < #selected then
-                c2.append("")
+                c2:append("")
               end
             end
-            c2.append("")
+            c2:append("")
             if failed == 0 then
-              c2.append("✓  All " .. #selected .. " source(s) processed successfully")
+              c2:append("✓  All " .. #selected .. " source(s) processed successfully")
             else
-              c2.append("✗  " .. failed .. " of " .. #selected .. " source(s) failed")
+              c2:append("✗  " .. failed .. " of " .. #selected .. " source(s) failed")
             end
           end,
         })

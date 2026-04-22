@@ -52,8 +52,8 @@ end
 M.select_csproj = function(ctx, callback)
   local files = M.get_csproj_files()
   if #files == 0 then
-    ctx.clear()
-    ctx.append("No .csproj files found in: " .. vim.fn.getcwd())
+    ctx:clear()
+    ctx:append("No .csproj files found in: " .. vim.fn.getcwd())
     return
   end
   if #files == 1 then
@@ -71,7 +71,7 @@ M.select_csproj = function(ctx, callback)
     })
   end
 
-  ctx.select(items, {
+  ctx:select(items, {
     title = "Select Project",
     on_select = function(item, c)
       callback(item._raw, c)
@@ -86,8 +86,8 @@ end
 M.select_sln = function(ctx, callback)
   local files = M.get_sln_files()
   if #files == 0 then
-    ctx.clear()
-    ctx.append("No .sln/.slnx files found in: " .. vim.fn.getcwd())
+    ctx:clear()
+    ctx:append("No .sln/.slnx files found in: " .. vim.fn.getcwd())
     return
   end
   if #files == 1 then
@@ -105,7 +105,7 @@ M.select_sln = function(ctx, callback)
     })
   end
 
-  ctx.select(items, {
+  ctx:select(items, {
     title = "Select Solution",
     on_select = function(item, c)
       callback(item._raw, c)

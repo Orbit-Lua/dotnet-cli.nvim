@@ -20,36 +20,36 @@ M.run = function(cmd, ctx, on_complete, opts)
   }, opts or {})
 
   if opts.ctx_clear then
-    ctx.clear()
+    ctx:clear()
   end
 
-  ctx.append("$ " .. table.concat(cmd, " "))
-  ctx.append("")
+  ctx:append("$ " .. table.concat(cmd, " "))
+  ctx:append("")
 
   return vim.fn.jobstart(cmd, {
     stdout_buffered = false,
     stderr_buffered = false,
     on_stdout = function(_, data)
-      ctx.write(data)
+      ctx:write(data)
     end,
     on_stderr = function(_, data)
-      ctx.write(data)
+      ctx:write(data)
     end,
     on_exit = function(_, code)
-      ctx.append("")
+      ctx:append("")
       if code == 0 then
-        ctx.append("✓  Completed successfully")
+        ctx:append("✓  Completed successfully")
         if on_complete then
           vim.schedule(function()
             on_complete(ctx)
           end)
         end
         vim.schedule(function()
-          ctx.done()
+          ctx:done()
         end)
       else
-        ctx.append("✗  Failed  (exit code " .. code .. ")")
-        ctx.error()
+        ctx:append("✗  Failed  (exit code " .. code .. ")")
+        ctx:error()
       end
     end,
   })

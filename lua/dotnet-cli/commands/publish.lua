@@ -18,20 +18,20 @@ end
 M.configure_profile = function(project_dir, ctx)
   local csproj_files = vim.fn.glob(project_dir .. "/*.csproj", false, true)
   if #csproj_files == 0 then
-    ctx.append("⚠  No .csproj found in " .. project_dir)
+    ctx:append("⚠  No .csproj found in " .. project_dir)
     return
   end
 
   local csproj_content = table.concat(vim.fn.readfile(csproj_files[1]), "\n")
   local target_fw = csproj_content:match("<TargetFramework>(.+)</TargetFramework>")
   if not target_fw then
-    ctx.append("⚠  Could not detect TargetFramework from " .. csproj_files[1])
+    ctx:append("⚠  Could not detect TargetFramework from " .. csproj_files[1])
     return
   end
 
   local template_path = plugin_dir .. "/template/dotnet.csproj"
   if vim.fn.filereadable(template_path) ~= 1 then
-    ctx.append("⚠  Publish-profile template not found: " .. template_path)
+    ctx:append("⚠  Publish-profile template not found: " .. template_path)
     return
   end
 
@@ -47,9 +47,9 @@ M.configure_profile = function(project_dir, ctx)
   local profile_path = profile_dir .. "/FolderProfile.pubxml"
   vim.fn.writefile(template_lines, profile_path)
 
-  ctx.append("")
-  ctx.append("✓  Created publish profile: " .. profile_path)
-  ctx.append("   TargetFramework: " .. target_fw)
+  ctx:append("")
+  ctx:append("✓  Created publish profile: " .. profile_path)
+  ctx:append("   TargetFramework: " .. target_fw)
 end
 
 ---@type CometCommand
@@ -60,8 +60,7 @@ M.spec = {
   desc = "dotnet publish",
   action = function(ctx)
     project.select_csproj(ctx, function(f, c)
-      local job_id = job.run(M.get_cmd(f), c)
-      ctx:start_async_task(job_id)
+      c:start_async_task(job.run(M.get_cmd(f), c))
     end)
   end,
 }

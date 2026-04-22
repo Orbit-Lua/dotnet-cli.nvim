@@ -12,8 +12,7 @@ M.spec = {
   desc = "dotnet restore packages",
   action = function(ctx)
     project.select_csproj(ctx, function(f, c)
-      local job_id = job.run({ "dotnet", "restore", f }, c)
-      ctx:start_async_task(job_id)
+      c:start_async_task(job.run({ "dotnet", "restore", f }, c))
     end)
   end,
 }

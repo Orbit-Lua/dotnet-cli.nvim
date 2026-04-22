@@ -25,7 +25,7 @@ M.spec = {
   icon_hl = "DiagnosticOk",
   desc = "dotnet build",
   action = function(ctx)
-    ctx.select({
+    ctx:select({
       { _raw = "Debug", icon = "󰃤 ", icon_hl = "DiagnosticWarn", name = "Debug" },
       { _raw = "Release", icon = "󰑊 ", icon_hl = "DiagnosticOk", name = "Release" },
     }, {
@@ -33,8 +33,7 @@ M.spec = {
       on_select = function(item, c)
         local config = item._raw
         project.select_csproj(c, function(f, c2)
-          local job_id = job.run(M.get_cmd(f, config), c2)
-          ctx:start_async_task(job_id)
+          c2:start_async_task(job.run(M.get_cmd(f, config), c2))
         end)
       end,
     })

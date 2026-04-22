@@ -12,7 +12,7 @@ M.spec = {
   icon_hl = "DiagnosticWarn",
   desc = "dotnet watch (hot reload)",
   action = function(ctx)
-    ctx.select({
+    ctx:select({
       { _raw = "run", icon = "󰐊 ", icon_hl = "String", name = "Watch Run" },
       { _raw = "test", icon = "󰙨 ", icon_hl = "DiagnosticHint", name = "Watch Test" },
     }, {
@@ -21,9 +21,8 @@ M.spec = {
         local mode = item._raw
         project.select_csproj(c, function(f, c2)
           local cmd = { "dotnet", "watch", mode, "--project", f }
-          local job_id = job.run(cmd, c2)
+          c2:start_async_task(job.run(cmd, c2))
           project._current_running_project = f
-          ctx:start_async_task(job_id)
         end)
       end,
     })

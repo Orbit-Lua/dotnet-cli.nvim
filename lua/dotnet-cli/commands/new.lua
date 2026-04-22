@@ -13,23 +13,23 @@ M.spec = {
   icon_hl = "DiagnosticInfo",
   desc = "dotnet new",
   action = function(ctx)
-    ctx.clear()
+    ctx:clear()
 
     local major = sdk.get_major()
     local list_cmd = (major and major >= 7) and "dotnet new list" or "dotnet new --list"
 
-    ctx.append("$ " .. list_cmd)
-    ctx.append("")
+    ctx:append("$ " .. list_cmd)
+    ctx:append("")
 
     local raw, ok = job.run_sync(list_cmd)
     if not ok then
-      ctx.append("Failed to list templates. Is dotnet installed?")
+      ctx:append("Failed to list templates. Is dotnet installed?")
       return
     end
 
     local templates = parsers.templates(raw)
     if #templates == 0 then
-      ctx.append("No templates found.")
+      ctx:append("No templates found.")
       return
     end
 
@@ -43,7 +43,7 @@ M.spec = {
       })
     end
 
-    ctx.select(items, {
+    ctx:select(items, {
       title = "Select Template",
       on_select = function(item, c)
         local tpl = item._raw

@@ -12,8 +12,7 @@ M.spec = {
   desc = "dotnet test",
   action = function(ctx)
     project.select_csproj(ctx, function(f, c)
-      local job_id = job.run({ "dotnet", "test", f, "-v", "minimal" }, c)
-      ctx:start_async_task(job_id)
+      c:start_async_task(job.run({ "dotnet", "test", f, "-v", "minimal" }, c))
     end)
   end,
 }

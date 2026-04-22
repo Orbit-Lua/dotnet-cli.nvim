@@ -12,7 +12,7 @@ M.spec = {
   icon_hl = "DiagnosticHint",
   desc = "dotnet sln management",
   action = function(ctx)
-    ctx.select({
+    ctx:select({
       { _raw = "list", icon = "󰈚 ", icon_hl = "Comment", name = "List Projects" },
       { _raw = "add", icon = "󰐕 ", icon_hl = "DiagnosticOk", name = "Add Project" },
       { _raw = "remove", icon = "󰍴 ", icon_hl = "DiagnosticError", name = "Remove Project" },
@@ -46,8 +46,8 @@ M.spec = {
           project.select_sln(c, function(sln, c2)
             local files = project.get_csproj_files()
             if #files == 0 then
-              c2.clear()
-              c2.append("No .csproj files found in: " .. vim.fn.getcwd())
+              c2:clear()
+              c2:append("No .csproj files found in: " .. vim.fn.getcwd())
               return
             end
             if #files == 1 then
@@ -65,7 +65,7 @@ M.spec = {
               })
             end
 
-            c2.select(proj_items, {
+            c2:select(proj_items, {
               title = "Add Project",
               multi_select = true,
               on_select = function(selected, c3)
@@ -82,16 +82,16 @@ M.spec = {
 
         if action == "remove" then
           project.select_sln(c, function(sln, c2)
-            c2.clear()
+            c2:clear()
             local raw, ok = job.run_sync({ "dotnet", "sln", sln, "list" })
             if not ok then
-              c2.append("Failed to list projects in " .. sln)
+              c2:append("Failed to list projects in " .. sln)
               return
             end
 
             local projects = parsers.sln_projects(raw)
             if #projects == 0 then
-              c2.append("No projects found in " .. sln)
+              c2:append("No projects found in " .. sln)
               return
             end
 
@@ -105,7 +105,7 @@ M.spec = {
               })
             end
 
-            c2.select(proj_items, {
+            c2:select(proj_items, {
               title = "Remove Project",
               multi_select = true,
               on_select = function(selected, c3)
