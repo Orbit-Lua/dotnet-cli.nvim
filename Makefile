@@ -2,7 +2,7 @@
 
 test:
 	nvim --headless -u tests/minimal_init.lua \
-		-c "PlenaryBustedDirectory tests/dotnet-cli"
+		-c "PlenaryBustedDirectory tests/dotnet-cli { minimal_init = 'tests/minimal_init.lua' }"
 
 lint:
 	luac -p lua/dotnet-cli/*.lua lua/dotnet-cli/commands/*.lua
