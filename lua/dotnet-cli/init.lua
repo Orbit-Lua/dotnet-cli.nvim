@@ -8,7 +8,10 @@ M.title = "Dotnet"
 ---Open the Dotnet Manager UI.
 M.open = function()
   local commands = require("dotnet-cli.commands").get_all()
-  require("dotnet-cli.ui").open(commands, { title = "Dotnet Manager" })
+  require("dotnet-cli.ui").open(commands, {
+    session_id = "dotnet_manager",
+    root_title = "Dotnet Manager",
+  })
 end
 
 -- Re-export submodules for external use
