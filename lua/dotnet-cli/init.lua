@@ -36,31 +36,56 @@ M.setup = function(opts)
     vim.fn.jobstart(cmd, {
       on_exit = function(_, code)
         local ok = code == 0
-        vim.notify(ok and msg_ok or msg_fail, ok and vim.log.levels.INFO or vim.log.levels.ERROR, { title = M.title })
+        vim.notify(
+          ok and msg_ok or msg_fail,
+          ok and vim.log.levels.INFO or vim.log.levels.ERROR,
+          { title = M.title }
+        )
       end,
     })
   end
 
   vim.api.nvim_create_user_command("DotnetBuild", function()
-    vim.ui.select(M.project.get_csproj_files(), { prompt = "Choose project to build" }, function(f)
-      if f then
-        notify_job(build_cmd.get_cmd(f), "Building…", "Build succeeded", "Build failed")
+    vim.ui.select(
+      M.project.get_csproj_files(),
+      { prompt = "Choose project to build" },
+      function(f)
+        if f then
+          notify_job(
+            build_cmd.get_cmd(f),
+            "Building…",
+            "Build succeeded",
+            "Build failed"
+          )
+        end
       end
-    end)
+    )
   end, { desc = "Dotnet Build" })
 
   vim.api.nvim_create_user_command("DotnetPublish", function()
-    vim.ui.select(M.project.get_csproj_files(), { prompt = "Choose project to publish" }, function(f)
-      if f then
-        notify_job(publish_cmd.get_cmd(f), "Publishing…", "Publish succeeded", "Publish failed")
+    vim.ui.select(
+      M.project.get_csproj_files(),
+      { prompt = "Choose project to publish" },
+      function(f)
+        if f then
+          notify_job(
+            publish_cmd.get_cmd(f),
+            "Publishing…",
+            "Publish succeeded",
+            "Publish failed"
+          )
+        end
       end
-    end)
+    )
   end, { desc = "Dotnet Publish" })
 
   vim.api.nvim_create_user_command("DotnetGlobalJson", function()
     local existing_version
     if vim.fn.filereadable("global.json") == 1 then
-      local ok, data = pcall(vim.json.decode, table.concat(vim.fn.readfile("global.json"), "\n"))
+      local ok, data = pcall(
+        vim.json.decode,
+        table.concat(vim.fn.readfile("global.json"), "\n")
+      )
       if ok and data and data.sdk and data.sdk.version then
         existing_version = data.sdk.version
       end
@@ -68,7 +93,11 @@ M.setup = function(opts)
 
     local sdk_lines = vim.fn.systemlist("dotnet --list-sdks")
     if vim.v.shell_error ~= 0 or #sdk_lines == 0 then
-      vim.notify("Failed to retrieve SDK list.", vim.log.levels.ERROR, { title = M.title })
+      vim.notify(
+        "Failed to retrieve SDK list.",
+        vim.log.levels.ERROR,
+        { title = M.title }
+      )
       return
     end
     local choices = {}
@@ -76,7 +105,8 @@ M.setup = function(opts)
       table.insert(choices, (sdk_lines[i]:gsub("[\r\n]", "")))
     end
     vim.ui.select(choices, {
-      prompt = existing_version and ("Current: " .. existing_version .. " — Select new SDK version:")
+      prompt = existing_version
+          and ("Current: " .. existing_version .. " — Select new SDK version:")
         or "Select .NET SDK version:",
     }, function(choice)
       if not choice then
@@ -95,18 +125,28 @@ M.setup = function(opts)
           data.sdk.version = version
           vim.fn.writefile({ vim.json.encode(data) }, "global.json")
           vim.notify(
-            "Updated global.json (SDK " .. existing_version .. " → " .. version .. ")",
+            "Updated global.json (SDK "
+              .. existing_version
+              .. " → "
+              .. version
+              .. ")",
             vim.log.levels.INFO,
             { title = M.title }
           )
         else
-          vim.notify("Failed to parse existing global.json", vim.log.levels.ERROR, { title = M.title })
+          vim.notify(
+            "Failed to parse existing global.json",
+            vim.log.levels.ERROR,
+            { title = M.title }
+          )
         end
       else
-        local out = vim.fn.system("dotnet new globaljson --sdk-version " .. version)
+        local out =
+          vim.fn.system("dotnet new globaljson --sdk-version " .. version)
         local ok = vim.v.shell_error == 0
         vim.notify(
-          ok and "Created global.json (SDK " .. version .. ")" or "Error: " .. out,
+          ok and "Created global.json (SDK " .. version .. ")"
+            or "Error: " .. out,
           ok and vim.log.levels.INFO or vim.log.levels.ERROR,
           { title = M.title }
         )
@@ -127,7 +167,9 @@ M.setup = function(opts)
         local client = vim.lsp.get_client_by_id(args.data.client_id)
         local bufnr = args.buf
 
-        if client and (client.name == "roslyn" or client.name == "roslyn_ls") then
+        if
+          client and (client.name == "roslyn" or client.name == "roslyn_ls")
+        then
           vim.api.nvim_create_autocmd("InsertCharPre", {
             desc = "Roslyn: Trigger an auto insert on '/'.",
             buffer = bufnr,

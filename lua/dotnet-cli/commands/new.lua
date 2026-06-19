@@ -16,7 +16,8 @@ M.spec = {
     ctx:clear()
 
     local major = sdk.get_major()
-    local list_cmd = (major and major >= 7) and "dotnet new list" or "dotnet new --list"
+    local list_cmd = (major and major >= 7) and "dotnet new list"
+      or "dotnet new --list"
 
     ctx:append("$ " .. list_cmd)
     ctx:append("")
@@ -53,19 +54,23 @@ M.spec = {
             return
           end
           vim.schedule(function()
-            job.run({ "dotnet", "new", tpl.short_name, "-n", name, "-o", name }, c, function(ctx2)
-              vim.schedule(function()
-                vim.ui.select({ "Yes", "No" }, {
-                  prompt = "Configure publish profile (.pubxml) from custom template?",
-                }, function(choice)
-                  if choice == "Yes" then
-                    vim.schedule(function()
-                      publish.configure_profile(name, ctx2)
-                    end)
-                  end
+            job.run(
+              { "dotnet", "new", tpl.short_name, "-n", name, "-o", name },
+              c,
+              function(ctx2)
+                vim.schedule(function()
+                  vim.ui.select({ "Yes", "No" }, {
+                    prompt = "Configure publish profile (.pubxml) from custom template?",
+                  }, function(choice)
+                    if choice == "Yes" then
+                      vim.schedule(function()
+                        publish.configure_profile(name, ctx2)
+                      end)
+                    end
+                  end)
                 end)
-              end)
-            end)
+              end
+            )
           end)
         end)
       end,

@@ -52,7 +52,10 @@ M.spec_global_json = {
 
     local existing_version
     if vim.fn.filereadable("global.json") == 1 then
-      local ok, data = pcall(vim.json.decode, table.concat(vim.fn.readfile("global.json"), "\n"))
+      local ok, data = pcall(
+        vim.json.decode,
+        table.concat(vim.fn.readfile("global.json"), "\n")
+      )
       if ok and data and data.sdk and data.sdk.version then
         existing_version = data.sdk.version
         ctx:append("Current SDK version: " .. existing_version)
@@ -89,7 +92,13 @@ M.spec_global_json = {
             local encoded = vim.json.encode(data)
             vim.fn.writefile({ encoded }, "global.json")
             c:clear()
-            c:append("✓  Updated global.json  (SDK " .. existing_version .. " → " .. version .. ")")
+            c:append(
+              "✓  Updated global.json  (SDK "
+                .. existing_version
+                .. " → "
+                .. version
+                .. ")"
+            )
           else
             c:append("✗  Failed to parse existing global.json")
           end

@@ -19,16 +19,25 @@ M.get_current_running_project_name = function()
   return vim.fn.fnamemodify(proj, ":t:r")
 end
 
+---@param extension string
+---@return string[]
+local function find_files(extension)
+  local files = vim.fn.glob("**/*." .. extension, false, true)
+  table.sort(files)
+  return files
+end
+
 ---@return string[]
 M.get_csproj_files = function()
-  return vim.fn.glob("*.csproj", false, true)
+  return find_files("csproj")
 end
 
 ---@return string[]
 M.get_sln_files = function()
-  local sln = vim.fn.glob("*.sln", false, true)
-  local slnx = vim.fn.glob("*.slnx", false, true)
+  local sln = find_files("sln")
+  local slnx = find_files("slnx")
   vim.list_extend(sln, slnx)
+  table.sort(sln)
   return sln
 end
 

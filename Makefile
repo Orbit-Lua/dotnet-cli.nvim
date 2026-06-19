@@ -1,14 +1,19 @@
-.PHONY: test lint format
+ifeq ($(OS),Windows_NT)
+    LUACHECK := luacheck.bat
+else
+    LUACHECK := luacheck
+endif
+
+fmt:
+	echo "===> Formatting"
+	stylua lua/ --config-path=.stylua.toml
+
+lint:
+	echo "===> Linting"
+	$(LUACHECK) lua --globals vim
 
 test:
 	nvim --headless -u tests/minimal_init.lua \
 		-c "PlenaryBustedDirectory tests/dotnet-cli { minimal_init = 'tests/minimal_init.lua' }"
 
-lint:
-	luac -p lua/dotnet-cli/*.lua lua/dotnet-cli/commands/*.lua
-
-format:
-	stylua lua/ tests/ plugin/
-
-check:
-	stylua --check lua/ tests/ plugin/
+ready: fmt lint test

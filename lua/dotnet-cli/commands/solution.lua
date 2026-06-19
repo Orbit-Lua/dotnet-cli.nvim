@@ -13,10 +13,30 @@ M.spec = {
   desc = "dotnet sln management",
   action = function(ctx)
     ctx:select({
-      { _raw = "list", icon = "󰈚 ", icon_hl = "Comment", name = "List Projects" },
-      { _raw = "add", icon = "󰐕 ", icon_hl = "DiagnosticOk", name = "Add Project" },
-      { _raw = "remove", icon = "󰍴 ", icon_hl = "DiagnosticError", name = "Remove Project" },
-      { _raw = "new", icon = "󰝒 ", icon_hl = "DiagnosticInfo", name = "New Solution" },
+      {
+        _raw = "list",
+        icon = "󰈚 ",
+        icon_hl = "Comment",
+        name = "List Projects",
+      },
+      {
+        _raw = "add",
+        icon = "󰐕 ",
+        icon_hl = "DiagnosticOk",
+        name = "Add Project",
+      },
+      {
+        _raw = "remove",
+        icon = "󰍴 ",
+        icon_hl = "DiagnosticError",
+        name = "Remove Project",
+      },
+      {
+        _raw = "new",
+        icon = "󰝒 ",
+        icon_hl = "DiagnosticInfo",
+        name = "New Solution",
+      },
     }, {
       title = "Solution Action",
       on_select = function(item, c)

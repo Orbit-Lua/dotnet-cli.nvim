@@ -67,7 +67,7 @@ end
 ---@param proj string
 ---@return integer?
 M.get_netcore_pid = function(proj)
-  local cmd = {}
+  local cmd
 
   if vim.uv.os_uname().sysname:find("Windows") then
     cmd = {
@@ -81,7 +81,8 @@ M.get_netcore_pid = function(proj)
     }
   else
     -- pgrep -f: finds processes matching the full command lines
-    -- -n: returns only the newest (most recently started) matching process, which is crucial for dotnet watch that spawns new processes on changes
+    -- -n: returns only the newest match, which matters for dotnet watch
+    -- because it spawns new processes on changes.
 
     cmd = {
       "pgrep",

@@ -42,7 +42,8 @@ M.sln_projects = function(lines)
   return projects
 end
 
-local NUGET_DISABLED = { Disabled = true, ["已停用"] = true, ["已禁用"] = true }
+local NUGET_DISABLED =
+  { Disabled = true, ["已停用"] = true, ["已禁用"] = true }
 
 ---Parse the output of `dotnet nuget list source` into source records.
 ---Output format:
@@ -58,7 +59,10 @@ M.nuget_sources = function(lines)
     local name, status = lines[i]:match("^%s*%d+%.%s+(.-)%s+%[([^%]]+)%]")
     if name then
       local url = (lines[i + 1] or ""):match("^%s+(%S+)")
-      table.insert(sources, { name = name, url = url or "", enabled = not NUGET_DISABLED[status] })
+      table.insert(
+        sources,
+        { name = name, url = url or "", enabled = not NUGET_DISABLED[status] }
+      )
       i = i + 2
     else
       i = i + 1

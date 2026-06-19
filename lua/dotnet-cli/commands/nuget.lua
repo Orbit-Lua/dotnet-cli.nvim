@@ -1,6 +1,7 @@
 -- dotnet-cli.nvim commands: NuGet Sources
 local job = require("dotnet-cli.job")
 local parsers = require("dotnet-cli.parsers")
+local config = require("dotnet-cli.config")
 
 local M = {}
 
@@ -12,11 +13,36 @@ M.spec = {
   desc = "manage NuGet package sources",
   action = function(ctx)
     ctx:select({
-      { _raw = "list", icon = "󰈚 ", icon_hl = "Comment", name = "List Sources" },
-      { _raw = "add", icon = "󰐕 ", icon_hl = "DiagnosticOk", name = "Add Source" },
-      { _raw = "remove", icon = "󰍴 ", icon_hl = "DiagnosticError", name = "Remove Source" },
-      { _raw = "enable", icon = "󰔡 ", icon_hl = "DiagnosticOk", name = "Enable Source" },
-      { _raw = "disable", icon = "󰨙 ", icon_hl = "DiagnosticWarn", name = "Disable Source" },
+      {
+        _raw = "list",
+        icon = "󰈚 ",
+        icon_hl = "Comment",
+        name = "List Sources",
+      },
+      {
+        _raw = "add",
+        icon = "󰐕 ",
+        icon_hl = "DiagnosticOk",
+        name = "Add Source",
+      },
+      {
+        _raw = "remove",
+        icon = "󰍴 ",
+        icon_hl = "DiagnosticError",
+        name = "Remove Source",
+      },
+      {
+        _raw = "enable",
+        icon = "󰔡 ",
+        icon_hl = "DiagnosticOk",
+        name = "Enable Source",
+      },
+      {
+        _raw = "disable",
+        icon = "󰨙 ",
+        icon_hl = "DiagnosticWarn",
+        name = "Disable Source",
+      },
     }, {
       title = "NuGet Sources",
       on_select = function(item, c)
@@ -37,8 +63,16 @@ M.spec = {
               if not url or url == "" then
                 return
               end
+
+              local cmds =
+                { "dotnet", "nuget", "add", "source", url, "-n", name }
+
+              if config.get().nuget.allow_insecure_connections then
+                table.insert(cmds, "--allow-insecure-connections")
+              end
+
               vim.schedule(function()
-                job.run({ "dotnet", "nuget", "add", "source", url, "-n", name }, c)
+                job.run(cmds, c)
               end)
             end)
           end)
@@ -93,9 +127,13 @@ M.spec = {
             end
             c2:append("")
             if failed == 0 then
-              c2:append("✓  All " .. #selected .. " source(s) processed successfully")
+              c2:append(
+                "✓  All " .. #selected .. " source(s) processed successfully"
+              )
             else
-              c2:append("✗  " .. failed .. " of " .. #selected .. " source(s) failed")
+              c2:append(
+                "✗  " .. failed .. " of " .. #selected .. " source(s) failed"
+              )
             end
           end,
         })

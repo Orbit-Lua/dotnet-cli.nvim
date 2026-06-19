@@ -11,7 +11,10 @@ M.check = function()
     local version = vim.fn.system("dotnet --version")
     vim.health.ok("dotnet CLI found: " .. vim.trim(version))
   else
-    vim.health.error("dotnet CLI not found", { "Install .NET SDK: https://dot.net/download" })
+    vim.health.error(
+      "dotnet CLI not found",
+      { "Install .NET SDK: https://dot.net/download" }
+    )
     return
   end
 
@@ -36,7 +39,8 @@ M.check = function()
 
   -- Check global.json
   if vim.fn.filereadable("global.json") == 1 then
-    local ok, data = pcall(vim.json.decode, table.concat(vim.fn.readfile("global.json"), "\n"))
+    local ok, data =
+      pcall(vim.json.decode, table.concat(vim.fn.readfile("global.json"), "\n"))
     if ok and data and data.sdk and data.sdk.version then
       vim.health.ok("global.json pins SDK " .. data.sdk.version)
     else

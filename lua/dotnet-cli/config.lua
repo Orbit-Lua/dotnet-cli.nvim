@@ -8,6 +8,10 @@ local M = {}
 ---@field build_configurations string[] Available build configurations
 ---@field default_build_config string Default build configuration
 ---@field output_dir_template string Template for build output directory
+---@field nuget DotnetCliNugetConfig NuGet-related configuration
+
+---@class DotnetCliNugetConfig
+---@field allow_insecure_connections boolean Allow insecure connections for NuGet sources (default false)
 
 ---@type DotnetCliConfig
 M.defaults = {
@@ -15,6 +19,9 @@ M.defaults = {
   build_configurations = { "Debug", "Release" },
   default_build_config = "Debug",
   output_dir_template = "bin/{config}",
+  nuget = {
+    allow_insecure_connections = false,
+  },
 }
 
 ---@type DotnetCliConfig

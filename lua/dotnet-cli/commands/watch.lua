@@ -14,7 +14,12 @@ M.spec = {
   action = function(ctx)
     ctx:select({
       { _raw = "run", icon = "󰐊 ", icon_hl = "String", name = "Watch Run" },
-      { _raw = "test", icon = "󰙨 ", icon_hl = "DiagnosticHint", name = "Watch Test" },
+      {
+        _raw = "test",
+        icon = "󰙨 ",
+        icon_hl = "DiagnosticHint",
+        name = "Watch Test",
+      },
     }, {
       title = "Watch Mode",
       on_select = function(item, c)

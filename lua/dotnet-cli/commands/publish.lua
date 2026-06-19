@@ -4,12 +4,20 @@ local project = require("dotnet-cli.project")
 
 local M = {}
 
-local plugin_dir = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h")
+local plugin_dir =
+  vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h")
 
 ---@param proj string
 ---@return string[]
 M.get_cmd = function(proj)
-  return { "dotnet", "publish", proj, "-p:PublishProfile=FolderProfile", "-c", "Release" }
+  return {
+    "dotnet",
+    "publish",
+    proj,
+    "-p:PublishProfile=FolderProfile",
+    "-c",
+    "Release",
+  }
 end
 
 ---Configure a publish profile from the bundled template.
@@ -23,7 +31,8 @@ M.configure_profile = function(project_dir, ctx)
   end
 
   local csproj_content = table.concat(vim.fn.readfile(csproj_files[1]), "\n")
-  local target_fw = csproj_content:match("<TargetFramework>(.+)</TargetFramework>")
+  local target_fw =
+    csproj_content:match("<TargetFramework>(.+)</TargetFramework>")
   if not target_fw then
     ctx:append("⚠  Could not detect TargetFramework from " .. csproj_files[1])
     return
@@ -38,7 +47,9 @@ M.configure_profile = function(project_dir, ctx)
   local template_lines = vim.fn.readfile(template_path)
   for i, line in ipairs(template_lines) do
     if line:find("TargetFramework") and line:find("netx%.x") then
-      template_lines[i] = "    <TargetFramework>" .. target_fw .. "</TargetFramework>"
+      template_lines[i] = "    <TargetFramework>"
+        .. target_fw
+        .. "</TargetFramework>"
     end
   end
 
