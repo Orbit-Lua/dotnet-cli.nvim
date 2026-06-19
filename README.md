@@ -1,41 +1,52 @@
-# Dotnet-cli.nvim
+# dotnet-cli.nvim
 
-A .NET workspace manager for Neovim. It wraps common `dotnet` CLI workflows in
-a two-panel manager UI powered by
-[comet.nvim](https://github.com/gin31259461/comet.nvim), with direct Vim
-commands for build, publish, SDK pinning, and opening the manager.
+[![Neovim](https://img.shields.io/badge/Neovim-0.10%2B-57A143?style=flat-square&logo=neovim&logoColor=white)](https://neovim.io/)
+[![Lua](https://img.shields.io/badge/Lua-plugin-2C2D72?style=flat-square&logo=lua&logoColor=white)](https://www.lua.org/)
+[![.NET CLI](https://img.shields.io/badge/.NET-CLI-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 
-![dotnet-cli.nvim manager](docs/images/manager-overview.png)
+Run common `dotnet` workflows from Neovim through a compact manager UI.
+
+`dotnet-cli.nvim` wraps project discovery, build/test/run/watch tasks, NuGet source
+management, solution management, SDK pinning, and publish profile helpers in a
+two-panel [comet.nvim](https://github.com/gin31259461/comet.nvim) interface.
+
+![Dotnet Manager overview](docs/images/manager-overview.png)
 
 ## Features
 
-- Build, run, test, watch, restore, clean, publish, and format projects.
-- Find projects and solutions recursively from the current working directory.
-- Create projects from installed `dotnet new` templates.
-- Manage solution projects and NuGet sources.
-- Add NuGet packages by package ID.
-- Create or update `global.json` from installed SDKs.
-- Stream command output into the manager output panel.
-- Optional Roslyn auto-insert support for XML doc comments.
-- `:checkhealth dotnet-cli` environment checks.
+- **Manager UI** for build, run, test, watch, restore, clean, publish, format,
+  project creation, solution actions, NuGet sources, package installation, SDK
+  listing, runtime listing, and `global.json` updates.
+- **Direct commands** for quick build, publish, SDK pinning, and opening the
+  manager.
+- **Workspace discovery** for `.csproj`, `.sln`, and `.slnx` files.
+- **Streaming command output** from async `dotnet` jobs.
+- **Publish profile generation** using the bundled `FolderProfile.pubxml`
+  template.
+- **Roslyn auto-insert helper** for `/` when using `roslyn` or `roslyn_ls`.
 
 ## Requirements
 
-- Neovim 0.10 or newer.
-- A .NET SDK available as `dotnet`.
-- [comet.nvim](https://github.com/gin31259461/comet.nvim).
-- Optional:
-  [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons).
+- Neovim with Lua support.
+- [.NET SDK](https://dotnet.microsoft.com/download) available as `dotnet`.
+- [comet.nvim](https://github.com/gin31259461/comet.nvim) for the manager UI.
+- Optional: [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons)
+  for project and solution icons.
+
+> [!NOTE]
+> The test suite uses [plenary.nvim](https://github.com/nvim-lua/plenary.nvim).
+> It is only required for development.
 
 ## Installation
 
-With [lazy.nvim](https://github.com/folke/lazy.nvim):
+Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
   "Orbit-Lua/dotnet-cli.nvim",
   dependencies = {
-    "Orbit-Lua/comet.nvim",
+    "gin31259461/comet.nvim",
+    "nvim-tree/nvim-web-devicons",
   },
   cmd = {
     "DotnetManager",
@@ -43,14 +54,54 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
     "DotnetPublish",
     "DotnetGlobalJson",
   },
-  ft = "cs",
-  opts = {},
+  config = function()
+    require("dotnet-cli").setup()
+  end,
 }
 ```
 
-## Configuration
+Then run:
 
-`setup()` accepts optional values. `opts = {}` uses the defaults.
+```vim
+:DotnetManager
+```
+
+## Usage
+
+Open the manager with `:DotnetManager`. The left panel lists available actions;
+the right panel streams command output.
+
+| Action | What it runs |
+| --- | --- |
+| Build | `dotnet build <project> -c <config> -o <output>` |
+| Run | `dotnet run --project <project>` |
+| Test | `dotnet test <project> -v minimal` |
+| Watch | `dotnet watch run --project <project>` or `dotnet watch test --project <project>` |
+| Restore | `dotnet restore <project>` |
+| Clean | `dotnet clean <project>` |
+| Publish | `dotnet publish <project> -p:PublishProfile=FolderProfile -c Release` |
+| Format | `dotnet format <solution-or-project>` |
+| New Project | `dotnet new <template> -n <name> -o <name>` |
+| Solution | `dotnet new sln`, `dotnet sln list`, `dotnet sln add`, `dotnet sln remove` |
+| NuGet Sources | list, add, remove, enable, or disable package sources |
+| Add Package | `dotnet add <project> package <package>` |
+| Global JSON | create or update `global.json` with an installed SDK version |
+| List SDKs / Runtimes | `dotnet --list-sdks` and `dotnet --list-runtimes` |
+
+The plugin recursively discovers `.csproj`, `.sln`, and `.slnx` files from the
+current working directory. If only one matching file exists, it is selected
+automatically.
+
+### Direct Commands
+
+```vim
+:DotnetManager      " Open the manager UI
+:DotnetBuild        " Select a project and build it
+:DotnetPublish      " Select a project and publish it
+:DotnetGlobalJson   " Create or update global.json
+```
+
+### Configuration
 
 ```lua
 require("dotnet-cli").setup({
@@ -58,76 +109,19 @@ require("dotnet-cli").setup({
   build_configurations = { "Debug", "Release" },
   default_build_config = "Debug",
   output_dir_template = "bin/{config}",
+  nuget = {
+    allow_insecure_connections = false,
+  },
 })
 ```
 
-Build uses `build_configurations` for the manager choices,
-`default_build_config` when no configuration is selected, and
-`output_dir_template` for the `dotnet build -o` path.
-
-## Usage
-
-Open the manager:
-
-```vim
-:DotnetManager
-```
-
-Direct commands:
-
-- `:DotnetBuild` selects a project and runs `dotnet build`.
-- `:DotnetPublish` selects a project and runs `dotnet publish`.
-- `:DotnetGlobalJson` creates or updates `global.json`.
-
-Suggested mappings:
-
-```lua
-vim.keymap.set(
-  "n",
-  "<leader>dm",
-  "<cmd>DotnetManager<CR>",
-  { desc = "Dotnet Manager" }
-)
-
-vim.keymap.set(
-  "n",
-  "<leader>db",
-  "<cmd>DotnetBuild<CR>",
-  { desc = "Dotnet Build" }
-)
-```
-
-## Manager
-
-The manager has a search and selection panel on the left and command output on
-the right. Project and solution pickers search recursively from Neovim's
-current working directory.
-
-![dotnet-cli.nvim panels](docs/images/manager-panels.png)
-
-Available manager actions:
-
-- Build, Run, Test, Watch, Restore, Clean, Publish, and Format.
-- New Project.
-- Solution: list, add, remove, or create solutions.
-- NuGet Sources: list, add, remove, enable, or disable sources.
-- Add Package.
-- Global JSON, List SDKs, and List Runtimes.
-
-Common keybindings are provided by comet.nvim:
-
-- `<CR>` executes the selected item.
-- `<C-j>` and `<C-k>` move the selection.
-- `j` and `k` move the selection in normal mode.
-- `<Tab>` toggles a multi-select item when supported.
-- `<C-l>` focuses the output panel.
-- `<C-h>` returns focus to the input panel.
-- `<Esc>` or `q` cancels the current selection or closes the UI.
-
-Some actions support multi-select, such as adding or removing projects from a
-solution.
-
-![dotnet-cli.nvim multi-select](docs/images/multi-select.png)
+| Option | Default | Description |
+| --- | --- | --- |
+| `roslyn_auto_insert` | `true` | Enables Roslyn `/` auto-insert integration for `roslyn` and `roslyn_ls`. |
+| `build_configurations` | `{ "Debug", "Release" }` | Configurations shown by the Build action. |
+| `default_build_config` | `"Debug"` | Configuration used by direct build command helpers. |
+| `output_dir_template` | `"bin/{config}"` | Build output path. `{config}` is replaced with the selected configuration. |
+| `nuget.allow_insecure_connections` | `false` | Adds `--allow-insecure-connections` when adding NuGet sources. |
 
 ## Health Check
 
@@ -137,40 +131,28 @@ Run:
 :checkhealth dotnet-cli
 ```
 
-The health check verifies that `dotnet` is available, lists installed SDKs and
-runtimes, reports `global.json` SDK pinning, and checks whether
-`nvim-web-devicons` is installed.
-
-## API
-
-```lua
-local dotnet = require("dotnet-cli")
-
-dotnet.open()
-
-dotnet.project.get_csproj_files()
-dotnet.project.get_sln_files()
-
-dotnet.sdk.get_major()
-dotnet.sdk.get_version()
-dotnet.sdk.is_available()
-
-dotnet.job.run(cmd, ctx, on_complete)
-dotnet.job.run_sync(cmd)
-```
+The health check reports whether `dotnet` is available, installed SDKs and
+runtimes, `global.json` SDK pinning, and optional devicon support.
 
 ## Development
 
-Tests use
-[plenary.nvim](https://github.com/nvim-lua/plenary.nvim) from the local
-lazy.nvim package path.
+This project is Lua-only and uses `make` targets for local checks.
 
 ```bash
-make ready
+make all
 ```
 
-Useful targets:
+Narrower commands are available when iterating:
 
-- `make fmt` formats Lua files with StyLua.
-- `make lint` runs luacheck.
-- `make test` runs the plenary specs.
+```bash
+make fmt
+make lint
+make test
+```
+
+`make test` runs plenary specs through `tests/minimal_init.lua`. `make lint`
+requires `luacheck`; `make fmt` requires `stylua`.
+
+> [!TIP]
+> Parser, project discovery, SDK helper, config, command generation, and job
+> runner changes should include focused specs in `tests/dotnet-cli/`.

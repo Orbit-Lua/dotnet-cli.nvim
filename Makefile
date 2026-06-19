@@ -4,6 +4,8 @@ else
     LUACHECK := luacheck
 endif
 
+all: fmt lint test
+
 fmt:
 	echo "===> Formatting"
 	stylua lua/ --config-path=.stylua.toml
@@ -15,5 +17,3 @@ lint:
 test:
 	nvim --headless -u tests/minimal_init.lua \
 		-c "PlenaryBustedDirectory tests/dotnet-cli { minimal_init = 'tests/minimal_init.lua' }"
-
-ready: fmt lint test
