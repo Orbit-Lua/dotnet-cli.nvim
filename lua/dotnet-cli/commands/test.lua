@@ -7,7 +7,7 @@ local M = {}
 ---@type CometCommand
 M.spec = {
   name = "Test",
-  icon = "󰙨 ",
+  icon = " ",
   icon_hl = "DiagnosticHint",
   desc = "dotnet test",
   action = function(ctx)

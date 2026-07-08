@@ -13,10 +13,10 @@ M.spec = {
   desc = "dotnet watch (hot reload)",
   action = function(ctx)
     ctx:select({
-      { _raw = "run", icon = "󰐊 ", icon_hl = "String", name = "Watch Run" },
+      { _raw = "run", icon = " ", icon_hl = "String", name = "Watch Run" },
       {
         _raw = "test",
-        icon = "󰙨 ",
+        icon = " ",
         icon_hl = "DiagnosticHint",
         name = "Watch Test",
       },

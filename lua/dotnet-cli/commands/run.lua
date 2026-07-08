@@ -7,7 +7,7 @@ local M = {}
 ---@type CometCommand
 M.spec = {
   name = "Run",
-  icon = "󰐊 ",
+  icon = " ",
   icon_hl = "String",
   desc = "dotnet run --project",
   action = function(ctx)
