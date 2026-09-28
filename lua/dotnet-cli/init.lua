@@ -7,9 +7,11 @@ M.title = "Dotnet"
 
 ---Open the Dotnet Manager UI.
 M.open = function()
+  local workspace = require("dotnet-cli.workspace")
+  workspace.activate(vim.fn.getcwd())
   local commands = require("dotnet-cli.commands").get_all()
   require("dotnet-cli.ui").open(commands, {
-    session_id = "dotnet_manager",
+    session_id = "dotnet_manager:" .. workspace.current().root,
     root_title = "Dotnet Manager",
   })
 end
@@ -19,6 +21,13 @@ M.project = require("dotnet-cli.project")
 M.sdk = require("dotnet-cli.sdk")
 M.parsers = require("dotnet-cli.parsers")
 M.job = require("dotnet-cli.job")
+M.workspace = require("dotnet-cli.workspace")
+M.msbuild = require("dotnet-cli.msbuild")
+M.launch = require("dotnet-cli.launch")
+
+M.setup_dap = function(opts)
+  return require("dotnet-cli.dap").setup(opts)
+end
 
 ---@param opts? DotnetCliConfig
 M.setup = function(opts)
@@ -26,6 +35,12 @@ M.setup = function(opts)
   config.setup(opts)
 
   local cfg = config.get()
+  vim.api.nvim_create_autocmd("DirChanged", {
+    group = vim.api.nvim_create_augroup("DotnetCliWorkspace", { clear = true }),
+    callback = function()
+      M.workspace.activate(vim.fn.getcwd())
+    end,
+  })
   local build_cmd = require("dotnet-cli.commands.build")
   local publish_cmd = require("dotnet-cli.commands.publish")
 
@@ -33,14 +48,16 @@ M.setup = function(opts)
 
   local function notify_job(cmd, msg_start, msg_ok, msg_fail)
     vim.notify(msg_start, vim.log.levels.INFO, { title = M.title })
-    vim.fn.jobstart(cmd, {
-      on_exit = function(_, code)
-        local ok = code == 0
-        vim.notify(
-          ok and msg_ok or msg_fail,
-          ok and vim.log.levels.INFO or vim.log.levels.ERROR,
-          { title = M.title }
-        )
+    M.job.run(cmd, nil, nil, {
+      on_exit = function(code)
+        vim.schedule(function()
+          local ok = code == 0
+          vim.notify(
+            ok and msg_ok or msg_fail,
+            ok and vim.log.levels.INFO or vim.log.levels.ERROR,
+            { title = M.title }
+          )
+        end)
       end,
     })
   end
@@ -51,6 +68,7 @@ M.setup = function(opts)
       { prompt = "Choose project to build" },
       function(f)
         if f then
+          M.workspace.select_project(f)
           notify_job(
             build_cmd.get_cmd(f),
             "Building…",
@@ -68,6 +86,7 @@ M.setup = function(opts)
       { prompt = "Choose project to publish" },
       function(f)
         if f then
+          M.workspace.select_project(f)
           notify_job(
             publish_cmd.get_cmd(f),
             "Publishing…",
@@ -91,8 +110,8 @@ M.setup = function(opts)
       end
     end
 
-    local sdk_lines = vim.fn.systemlist("dotnet --list-sdks")
-    if vim.v.shell_error ~= 0 or #sdk_lines == 0 then
+    local sdk_lines, sdk_ok = M.job.run_sync({ "dotnet", "--list-sdks" })
+    if not sdk_ok or #sdk_lines == 0 then
       vim.notify(
         "Failed to retrieve SDK list.",
         vim.log.levels.ERROR,
@@ -141,12 +160,16 @@ M.setup = function(opts)
           )
         end
       else
-        local out =
-          vim.fn.system("dotnet new globaljson --sdk-version " .. version)
-        local ok = vim.v.shell_error == 0
+        local output, ok = M.job.run_sync({
+          "dotnet",
+          "new",
+          "globaljson",
+          "--sdk-version",
+          version,
+        })
         vim.notify(
           ok and "Created global.json (SDK " .. version .. ")"
-            or "Error: " .. out,
+            or "Error: " .. table.concat(output, "\n"),
           ok and vim.log.levels.INFO or vim.log.levels.ERROR,
           { title = M.title }
         )
@@ -157,6 +180,35 @@ M.setup = function(opts)
   vim.api.nvim_create_user_command("DotnetManager", function()
     M.open()
   end, { desc = "Open Dotnet Manager UI" })
+
+  vim.api.nvim_create_user_command("DotnetDebug", function()
+    M.workspace.activate(vim.fn.getcwd())
+    local function run(project)
+      if not project then
+        return
+      end
+      M.workspace.select_project(project)
+      local ok, err = require("dotnet-cli.dap").launch()
+      if not ok then
+        vim.notify(err, vim.log.levels.ERROR, { title = M.title })
+      end
+    end
+    local selected = M.workspace.current().project
+    if selected then
+      run(selected)
+    else
+      vim.ui.select(M.project.get_csproj_files(), {
+        prompt = "Choose project to debug",
+      }, run)
+    end
+  end, { desc = "Debug selected .NET project" })
+
+  vim.api.nvim_create_user_command("DotnetAttach", function()
+    local ok, err = require("dotnet-cli.dap").attach()
+    if not ok then
+      vim.notify(err, vim.log.levels.ERROR, { title = M.title })
+    end
+  end, { desc = "Attach .NET debugger to a local process" })
 
   -- ── Roslyn auto-insert ────────────────────────────────────────────────────
 

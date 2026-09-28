@@ -21,4 +21,25 @@ describe("job", function()
       assert.are.equal("world", lines[1])
     end)
   end)
+
+  describe("start", function()
+    it("runs with a working directory and reports an exit status", function()
+      local tmp = vim.fn.tempname()
+      vim.fn.mkdir(tmp, "p")
+      local result
+      local id = job.start({
+        argv = { "sh", "-c", "pwd" },
+        cwd = tmp,
+        on_exit = function(code)
+          result = code
+        end,
+      })
+      assert.is_true(id > 0)
+      assert.is_true(vim.wait(3000, function()
+        return result ~= nil
+      end, 10))
+      assert.are.equal(0, result)
+      vim.fn.delete(tmp, "rf")
+    end)
+  end)
 end)

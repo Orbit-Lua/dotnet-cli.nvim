@@ -146,4 +146,54 @@ describe("parsers", function()
       assert.are.equal(0, #result)
     end)
   end)
+
+  describe("diagnostics", function()
+    it("parses compiler errors and warnings into quickfix items", function()
+      local result = parsers.diagnostics({
+        "src/App.cs(4,8): error CS1002: ; expected [src/App.csproj]",
+        "src/Other.cs(9,3): Warning CS0168: variable declared but never used",
+      })
+      assert.are.equal(2, #result)
+      assert.are.same({
+        filename = "src/App.cs",
+        lnum = 4,
+        col = 8,
+        type = "E",
+        text = "CS1002: ; expected",
+      }, result[1])
+      assert.are.equal("W", result[2].type)
+    end)
+  end)
+
+  describe("stack_locations", function()
+    it("extracts and de-duplicates source paths from test failures", function()
+      local result = parsers.stack_locations({
+        "   at Tests.Sample.Run() in /tmp/Sample.cs:line 12",
+        "   at Tests.Sample.Run() in /tmp/Sample.cs:line 12",
+        "   at Tests.Other.Run() in C:\\src\\Other.cs:line 27",
+      })
+      assert.are.equal(2, #result)
+      assert.are.equal("/tmp/Sample.cs", result[1].filename)
+      assert.are.equal(12, result[1].lnum)
+      assert.are.equal("C:\\src\\Other.cs", result[2].filename)
+      assert.are.equal(27, result[2].lnum)
+    end)
+  end)
+
+  describe("vstest_names", function()
+    it("reads test names until the end of the discovery section", function()
+      local result = parsers.vstest_names({
+        "The following Tests are available:",
+        "Namespace.One.TestA",
+        "Namespace.Two.TestB",
+        "",
+        "Test Run Successful.",
+      })
+      assert.are.same({ "Namespace.One.TestA", "Namespace.Two.TestB" }, result)
+    end)
+
+    it("returns an empty list without the discovery heading", function()
+      assert.are.same({}, parsers.vstest_names({ "No tests found" }))
+    end)
+  end)
 end)

@@ -99,4 +99,80 @@ M.first_pid = function(output)
   return nil
 end
 
+---Read compiler diagnostics from MSBuild output.
+---@param lines string[]
+---@return table[]
+M.diagnostics = function(lines)
+  local result = {}
+  for _, line in ipairs(lines) do
+    local file, lnum, col, severity, code, message =
+      line:match("^(.-)%((%d+),(%d+)%)%s*:%s*(%a+)%s+([%w%d]+)%s*:%s*(.-)%s*%[")
+    if not file then
+      file, lnum, col, severity, code, message =
+        line:match("^(.-)%((%d+),(%d+)%)%s*:%s*(%a+)%s+([%w%d]+)%s*:%s*(.+)$")
+    end
+    severity = severity and string.lower(severity)
+    if file and (severity == "error" or severity == "warning") then
+      table.insert(result, {
+        filename = file,
+        lnum = tonumber(lnum),
+        col = tonumber(col),
+        type = severity == "error" and "E" or "W",
+        text = code .. ": " .. message,
+      })
+    end
+  end
+  return result
+end
+
+---Extract source locations from .NET test stack traces.
+---@param lines string[]
+---@return table[]
+M.stack_locations = function(lines)
+  local result = {}
+  local seen = {}
+  for _, line in ipairs(lines) do
+    local file, lnum = line:match("%s+in%s+(.+):line%s+(%d+)")
+    if file then
+      file = vim.trim(file)
+      lnum = tonumber(lnum)
+      local key = file .. ":" .. lnum
+      if not seen[key] then
+        seen[key] = true
+        table.insert(result, {
+          filename = file,
+          lnum = lnum,
+          text = vim.trim(line),
+        })
+      end
+    end
+  end
+  return result
+end
+
+---Find names after the VSTest discovery heading.
+---@param lines string[]
+---@return string[]
+M.vstest_names = function(lines)
+  local names = {}
+  local in_list = false
+  for _, line in ipairs(lines) do
+    if line:lower():find("the following tests are available:", 1, true) then
+      in_list = true
+    elseif in_list then
+      local name = vim.trim(line)
+      if name == "" then
+        if #names > 0 then
+          break
+        end
+      elseif name:match("^Test Run ") or name:match("^Starting test") then
+        break
+      else
+        table.insert(names, name)
+      end
+    end
+  end
+  return names
+end
+
 return M

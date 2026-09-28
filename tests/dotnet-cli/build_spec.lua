@@ -19,8 +19,6 @@ describe("build command", function()
       "src/App/App.csproj",
       "-c",
       "Release",
-      "-o",
-      vim.fs.joinpath(vim.fn.getcwd(), "bin", "Release"),
     }, cmd)
   end)
 

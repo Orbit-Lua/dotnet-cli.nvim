@@ -57,6 +57,40 @@ M.check = function()
   else
     vim.health.info("nvim-web-devicons not found (icons will use fallback)")
   end
+
+  local has_comet = pcall(require, "comet")
+  if has_comet then
+    vim.health.ok("comet.nvim available (manager UI)")
+  else
+    vim.health.warn("comet.nvim not found; install it for DotnetManager")
+  end
+
+  local has_dap = pcall(require, "dap")
+  if has_dap then
+    vim.health.ok("nvim-dap available")
+  else
+    vim.health.info("nvim-dap not found; .NET debugging is unavailable")
+  end
+  if vim.fn.executable("netcoredbg") == 1 then
+    vim.health.ok("netcoredbg available")
+  else
+    vim.health.info("netcoredbg not found; set adapter_path for .NET debugging")
+  end
+
+  for _, tool in ipairs({
+    "dotnet-ef",
+    "dotnet-counters",
+    "dotnet-trace",
+    "dotnet-dump",
+  }) do
+    if vim.fn.executable(tool) == 1 then
+      vim.health.ok(tool .. " available")
+    else
+      vim.health.info(
+        tool .. " not on PATH; a local tool manifest may provide it"
+      )
+    end
+  end
 end
 
 return M

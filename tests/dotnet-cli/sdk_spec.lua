@@ -1,4 +1,5 @@
 local sdk = require("dotnet-cli.sdk")
+local job = require("dotnet-cli.job")
 
 describe("sdk", function()
   after_each(function()
@@ -36,6 +37,32 @@ describe("sdk", function()
         -- Version should match semver pattern
         assert.is_truthy(result:match("^%d+%.%d+%.%d+"))
       end
+    end)
+  end)
+
+  describe("per-root cache", function()
+    local original
+
+    before_each(function()
+      original = job.run_sync
+    end)
+
+    after_each(function()
+      job.run_sync = original
+    end)
+
+    it("keeps SDK versions separate for each root", function()
+      local calls = 0
+      job.run_sync = function(_, opts)
+        calls = calls + 1
+        return { opts.cwd == "/workspace/a" and "8.0.100" or "9.0.100" }, true
+      end
+      assert.are.equal("8.0.100", sdk.get_version("/workspace/a"))
+      assert.are.equal("9.0.100", sdk.get_version("/workspace/b"))
+      assert.are.equal("8.0.100", sdk.get_version("/workspace/a"))
+      assert.are.equal(2, calls)
+      assert.are.equal(8, sdk.get_major("/workspace/a"))
+      assert.are.equal(9, sdk.get_major("/workspace/b"))
     end)
   end)
 

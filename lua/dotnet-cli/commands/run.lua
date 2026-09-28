@@ -1,6 +1,6 @@
 -- dotnet-cli.nvim commands: Run
-local job = require("dotnet-cli.job")
-local project = require("dotnet-cli.project")
+local common = require("dotnet-cli.commands.common")
+local workspace = require("dotnet-cli.workspace")
 
 local M = {}
 
@@ -11,9 +11,16 @@ M.spec = {
   icon_hl = "String",
   desc = "dotnet run --project",
   action = function(ctx)
-    project.select_csproj(ctx, function(f, c)
-      c:start_async_task(job.run({ "dotnet", "run", "--project", f }, c))
-      project._current_running_project = f
+    common.project(ctx, function(f, c)
+      local state = workspace.current()
+      local cmd = { "dotnet", "run", "--project", f, "-c", state.configuration }
+      if state.tfm then
+        vim.list_extend(cmd, { "-f", state.tfm })
+      end
+      if state.profile then
+        vim.list_extend(cmd, { "--launch-profile", state.profile })
+      end
+      common.run(c, cmd, { cwd = state.root, interactive = true })
     end)
   end,
 }

@@ -7,7 +7,7 @@ local M = {}
 ---@field roslyn_auto_insert boolean Enable Roslyn '/' auto-insert (default true)
 ---@field build_configurations string[] Available build configurations
 ---@field default_build_config string Default build configuration
----@field output_dir_template string Template for build output directory
+---@field output_dir_template string? Optional build output directory template
 ---@field nuget DotnetCliNugetConfig NuGet-related configuration
 
 ---@class DotnetCliNugetConfig
@@ -18,7 +18,6 @@ M.defaults = {
   roslyn_auto_insert = true,
   build_configurations = { "Debug", "Release" },
   default_build_config = "Debug",
-  output_dir_template = "bin/{config}",
   nuget = {
     allow_insecure_connections = false,
   },

@@ -21,21 +21,28 @@ end
 
 ---@param extension string
 ---@return string[]
-local function find_files(extension)
-  local files = vim.fn.glob("**/*." .. extension, false, true)
+local function find_files(extension, root)
+  local pattern = root and (vim.fs.normalize(root) .. "/**/*." .. extension)
+    or ("**/*." .. extension)
+  local files = vim.fn.glob(pattern, false, true)
+  if root then
+    for i, file in ipairs(files) do
+      files[i] = vim.fs.relpath(root, file) or file
+    end
+  end
   table.sort(files)
   return files
 end
 
 ---@return string[]
-M.get_csproj_files = function()
-  return find_files("csproj")
+M.get_csproj_files = function(root)
+  return find_files("csproj", root)
 end
 
 ---@return string[]
-M.get_sln_files = function()
-  local sln = find_files("sln")
-  local slnx = find_files("slnx")
+M.get_sln_files = function(root)
+  local sln = find_files("sln", root)
+  local slnx = find_files("slnx", root)
   vim.list_extend(sln, slnx)
   table.sort(sln)
   return sln
@@ -66,6 +73,7 @@ M.select_csproj = function(ctx, callback)
     return
   end
   if #files == 1 then
+    require("dotnet-cli.workspace").select_project(files[1])
     callback(files[1], ctx)
     return
   end
@@ -83,6 +91,7 @@ M.select_csproj = function(ctx, callback)
   ctx:select(items, {
     title = "Select Project",
     on_select = function(item, c)
+      require("dotnet-cli.workspace").select_project(item._raw)
       callback(item._raw, c)
     end,
   })

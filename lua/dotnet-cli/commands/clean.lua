@@ -1,6 +1,5 @@
 -- dotnet-cli.nvim commands: Clean
-local job = require("dotnet-cli.job")
-local project = require("dotnet-cli.project")
+local common = require("dotnet-cli.commands.common")
 
 local M = {}
 
@@ -11,8 +10,8 @@ M.spec = {
   icon_hl = "DiagnosticError",
   desc = "dotnet clean",
   action = function(ctx)
-    project.select_csproj(ctx, function(f, c)
-      c:start_async_task(job.run({ "dotnet", "clean", f }, c))
+    common.project(ctx, function(f, c)
+      common.run(c, { "dotnet", "clean", f })
     end)
   end,
 }

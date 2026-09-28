@@ -1,6 +1,6 @@
 -- dotnet-cli.nvim commands: Build
-local job = require("dotnet-cli.job")
-local project = require("dotnet-cli.project")
+local common = require("dotnet-cli.commands.common")
+local workspace = require("dotnet-cli.workspace")
 
 local M = {}
 
@@ -31,16 +31,18 @@ M.get_cmd = function(proj, config)
   local cfg = require("dotnet-cli.config").get()
   config = config or cfg.default_build_config
 
-  local out_dir = cfg.output_dir_template:gsub("{config}", config)
-  if not is_absolute_path(out_dir) then
-    out_dir = vim.fs.joinpath(vim.fn.getcwd(), out_dir)
-  end
-
   local cmd = { "dotnet", "build" }
   if proj and proj ~= "" then
     table.insert(cmd, proj)
   end
-  vim.list_extend(cmd, { "-c", config, "-o", out_dir })
+  vim.list_extend(cmd, { "-c", config })
+  if cfg.output_dir_template then
+    local out_dir = cfg.output_dir_template:gsub("{config}", config)
+    if not is_absolute_path(out_dir) then
+      out_dir = vim.fs.joinpath(vim.fn.getcwd(), out_dir)
+    end
+    vim.list_extend(cmd, { "-o", out_dir })
+  end
   return cmd
 end
 
@@ -72,8 +74,13 @@ M.spec = {
       title = "Build Configuration",
       on_select = function(item, c)
         local config = item._raw
-        project.select_csproj(c, function(f, c2)
-          c2:start_async_task(job.run(M.get_cmd(f, config), c2))
+        common.project(c, function(f, c2)
+          workspace.set({ configuration = config })
+          common.run(
+            c2,
+            M.get_cmd(f, config),
+            { cwd = workspace.current().root }
+          )
         end)
       end,
     })

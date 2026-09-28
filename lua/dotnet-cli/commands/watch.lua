@@ -1,7 +1,7 @@
 -- dotnet-cli.nvim commands: Watch (NEW)
 -- Hot-reload development with `dotnet watch`.
-local job = require("dotnet-cli.job")
-local project = require("dotnet-cli.project")
+local common = require("dotnet-cli.commands.common")
+local workspace = require("dotnet-cli.workspace")
 
 local M = {}
 
@@ -24,10 +24,10 @@ M.spec = {
       title = "Watch Mode",
       on_select = function(item, c)
         local mode = item._raw
-        project.select_csproj(c, function(f, c2)
+        common.project(c, function(f, c2)
           local cmd = { "dotnet", "watch", mode, "--project", f }
-          c2:start_async_task(job.run(cmd, c2))
-          project._current_running_project = f
+          local state = workspace.current()
+          common.run(c2, cmd, { cwd = state.root, interactive = true })
         end)
       end,
     })

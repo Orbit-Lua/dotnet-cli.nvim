@@ -1,6 +1,7 @@
 -- dotnet-cli.nvim commands: Test
-local job = require("dotnet-cli.job")
-local project = require("dotnet-cli.project")
+local testing = require("dotnet-cli.commands.testing")
+local common = require("dotnet-cli.commands.common")
+local workspace = require("dotnet-cli.workspace")
 
 local M = {}
 
@@ -11,8 +12,16 @@ M.spec = {
   icon_hl = "DiagnosticHint",
   desc = "dotnet test",
   action = function(ctx)
-    project.select_csproj(ctx, function(f, c)
-      c:start_async_task(job.run({ "dotnet", "test", f, "-v", "minimal" }, c))
+    common.project(ctx, function(f, c)
+      local state = workspace.current()
+      common.run(
+        c,
+        testing.command(f, "all", {
+          root = state.root,
+          configuration = state.configuration,
+          tfm = state.tfm,
+        })
+      )
     end)
   end,
 }

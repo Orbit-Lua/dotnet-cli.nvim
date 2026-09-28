@@ -19,6 +19,10 @@ lua/dotnet-cli/config.lua        default options and user option merging
 lua/dotnet-cli/ui.lua            thin comet.nvim adapter
 lua/dotnet-cli/job.lua           async and sync command runners
 lua/dotnet-cli/project.lua       .csproj, .sln, and .slnx discovery
+lua/dotnet-cli/workspace.lua     per-root selected project and build context
+lua/dotnet-cli/msbuild.lua       evaluated target metadata
+lua/dotnet-cli/launch.lua        Project launch profiles
+lua/dotnet-cli/dap.lua           optional nvim-dap/netcoredbg integration
 lua/dotnet-cli/parsers.lua       pure parsers for dotnet CLI output
 lua/dotnet-cli/sdk.lua           SDK detection and cache
 lua/dotnet-cli/health.lua        :checkhealth integration
@@ -79,6 +83,11 @@ Mention any check that cannot be run because a local tool is missing.
   job handling inside command modules.
 - Use `lua/dotnet-cli/project.lua` for `.csproj`, `.sln`, and `.slnx`
   discovery.
+- Keep project selection in `workspace.lua`; command actions should use
+  `commands/common.lua` and the shared job runner. Interactive jobs must
+  register a Comet terminal on their task context.
+- Query evaluated output paths with `msbuild.lua`. Do not infer debugger paths
+  from project XML or a hard-coded `bin` layout.
 - Keep output parsing in `lua/dotnet-cli/parsers.lua`; parser functions should
   remain pure and covered by focused specs.
 - Keep `lua/dotnet-cli/ui.lua` as a thin `comet.nvim` shim unless the UI
@@ -96,6 +105,8 @@ Add or update tests when changing:
 - project or solution discovery;
 - SDK helper behavior and caching;
 - job runner behavior.
+- workspace selection, launch profiles, DAP command generation, and test-runner
+  option differences.
 
 Prefer focused specs under `tests/dotnet-cli/` that exercise the changed module
 directly. Use temporary directories for project discovery tests and restore the

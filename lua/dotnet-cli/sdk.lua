@@ -3,32 +3,42 @@
 
 local M = {}
 
----@type number?
-local _sdk_major
+---@type table<string, string>
+local _versions = {}
+
+local function cache_key(root)
+  return vim.fs.normalize(vim.fn.fnamemodify(root or vim.fn.getcwd(), ":p"))
+end
 
 ---Get the major version number of the active .NET SDK (cached per session).
 ---@return number?
-M.get_major = function()
-  if _sdk_major then
-    return _sdk_major
-  end
-  local out = vim.fn.system("dotnet --version")
-  if vim.v.shell_error ~= 0 then
+M.get_major = function(root)
+  local version = M.get_version(root)
+  if not version then
     return nil
   end
-  local major = vim.trim(out):match("^(%d+)")
-  _sdk_major = major and tonumber(major)
-  return _sdk_major
+  local major = version:match("^(%d+)")
+  return major and tonumber(major)
 end
 
 ---Get the full SDK version string.
 ---@return string?
-M.get_version = function()
-  local out = vim.fn.system("dotnet --version")
-  if vim.v.shell_error ~= 0 then
+M.get_version = function(root)
+  local key = cache_key(root)
+  if _versions[key] then
+    return _versions[key]
+  end
+  local lines, ok = require("dotnet-cli.job").run_sync(
+    { "dotnet", "--version" },
+    {
+      cwd = key,
+    }
+  )
+  if not ok or not lines[1] then
     return nil
   end
-  return vim.trim(out)
+  _versions[key] = vim.trim(lines[1])
+  return _versions[key]
 end
 
 ---Check whether the dotnet CLI is available.
@@ -39,7 +49,7 @@ end
 
 ---Reset the cached SDK version (useful for testing).
 M._reset_cache = function()
-  _sdk_major = nil
+  _versions = {}
 end
 
 return M

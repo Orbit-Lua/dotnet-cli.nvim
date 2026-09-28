@@ -11,7 +11,7 @@ describe("config", function()
     assert.are.equal(true, cfg.roslyn_auto_insert)
     assert.are.equal("Debug", cfg.default_build_config)
     assert.are.same({ "Debug", "Release" }, cfg.build_configurations)
-    assert.are.equal("bin/{config}", cfg.output_dir_template)
+    assert.is_nil(cfg.output_dir_template)
   end)
 
   it("merges user options", function()
