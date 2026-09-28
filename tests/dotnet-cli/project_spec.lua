@@ -37,6 +37,26 @@ describe("project", function()
 
       assert.are.same({ "Root.csproj", "src/App/App.csproj" }, files)
     end)
+
+    it("discovers projects asynchronously without scanning build output", function()
+      local tmp = vim.fn.tempname()
+      vim.fn.mkdir(vim.fs.joinpath(tmp, "src"), "p")
+      vim.fn.mkdir(vim.fs.joinpath(tmp, "bin"), "p")
+      vim.fn.writefile({}, vim.fs.joinpath(tmp, "src", "App.csproj"))
+      vim.fn.writefile({}, vim.fs.joinpath(tmp, "bin", "Ignored.csproj"))
+      local done = false
+      local found
+      project.get_csproj_files_async(tmp, function(files)
+        found = files
+        done = true
+      end)
+      assert.is_false(done)
+      assert.is_true(vim.wait(1000, function()
+        return done
+      end))
+      assert.are.same({ "src/App.csproj" }, found)
+      vim.fn.delete(tmp, "rf")
+    end)
   end)
 
   describe("get_sln_files", function()

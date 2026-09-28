@@ -64,38 +64,39 @@ M.spec = {
 
         if action == "add" then
           project.select_sln(c, function(sln, c2)
-            local files = project.get_csproj_files()
-            if #files == 0 then
-              c2:clear()
-              c2:append("No .csproj files found in: " .. vim.fn.getcwd())
-              return
-            end
-            if #files == 1 then
-              job.run({ "dotnet", "sln", sln, "add", files[1] }, c2)
-              return
-            end
-
-            local proj_items = {}
-            for _, f in ipairs(files) do
-              table.insert(proj_items, {
-                _raw = f,
-                icon = project.get_file_icon(f),
-                icon_hl = "DevIconCs",
-                name = f,
-              })
-            end
-
-            c2:select(proj_items, {
+            c2:select({ { name = "Scanning projects…", icon = "󰈚 " } }, {
               title = "Add Project",
               multi_select = true,
               on_select = function(selected, c3)
                 local cmd = { "dotnet", "sln", sln, "add" }
                 for _, proj_item in ipairs(selected) do
-                  table.insert(cmd, proj_item._raw)
+                  if proj_item._raw then
+                    table.insert(cmd, proj_item._raw)
+                  end
                 end
-                job.run(cmd, c3)
+                if #cmd > 4 then
+                  job.run(cmd, c3)
+                end
               end,
             })
+            project.get_csproj_files_async(vim.fn.getcwd(), function(files)
+              local proj_items = {}
+              for _, f in ipairs(files) do
+                table.insert(proj_items, {
+                  _raw = f,
+                  icon = project.get_file_icon(f),
+                  icon_hl = "DevIconCs",
+                  name = f,
+                })
+              end
+              if #proj_items == 0 then
+                c2:update({
+                  { name = "No .csproj files found", icon = "󰈚 " },
+                })
+              else
+                c2:update(proj_items)
+              end
+            end)
           end)
           return
         end

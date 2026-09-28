@@ -13,6 +13,7 @@ M.open = function()
   require("dotnet-cli.ui").open(commands, {
     session_id = "dotnet_manager:" .. workspace.current().root,
     root_title = "Dotnet Manager",
+    default_icon = "󰈚 ",
   })
 end
 
@@ -63,39 +64,65 @@ M.setup = function(opts)
   end
 
   vim.api.nvim_create_user_command("DotnetBuild", function()
-    vim.ui.select(
-      M.project.get_csproj_files(),
-      { prompt = "Choose project to build" },
-      function(f)
+    local root = vim.fn.getcwd()
+    vim.notify(
+      "Scanning .NET projects…",
+      vim.log.levels.INFO,
+      { title = M.title }
+    )
+    M.project.get_csproj_files_async(root, function(files)
+      if #files == 0 then
+        vim.notify(
+          "No .csproj files found",
+          vim.log.levels.WARN,
+          { title = M.title }
+        )
+        return
+      end
+      vim.ui.select(files, { prompt = "Choose project to build" }, function(f)
         if f then
-          M.workspace.select_project(f)
+          local path = vim.fs.joinpath(root, f)
+          M.workspace.select_project(path)
           notify_job(
-            build_cmd.get_cmd(f),
+            build_cmd.get_cmd(path),
             "Building…",
             "Build succeeded",
             "Build failed"
           )
         end
-      end
-    )
+      end)
+    end)
   end, { desc = "Dotnet Build" })
 
   vim.api.nvim_create_user_command("DotnetPublish", function()
-    vim.ui.select(
-      M.project.get_csproj_files(),
-      { prompt = "Choose project to publish" },
-      function(f)
+    local root = vim.fn.getcwd()
+    vim.notify(
+      "Scanning .NET projects…",
+      vim.log.levels.INFO,
+      { title = M.title }
+    )
+    M.project.get_csproj_files_async(root, function(files)
+      if #files == 0 then
+        vim.notify(
+          "No .csproj files found",
+          vim.log.levels.WARN,
+          { title = M.title }
+        )
+        return
+      end
+      vim.ui.select(files, { prompt = "Choose project to publish" }, function(f)
         if f then
-          M.workspace.select_project(f)
+          local path = vim.fs.joinpath(root, f)
+          M.workspace.select_project(path)
           notify_job(
-            publish_cmd.get_cmd(f),
+            publish_cmd.get_cmd(path),
             "Publishing…",
             "Publish succeeded",
             "Publish failed"
           )
         end
-      end
-    )
+      end)
+    end)
   end, { desc = "Dotnet Publish" })
 
   vim.api.nvim_create_user_command("DotnetGlobalJson", function()
@@ -197,9 +224,25 @@ M.setup = function(opts)
     if selected then
       run(selected)
     else
-      vim.ui.select(M.project.get_csproj_files(), {
-        prompt = "Choose project to debug",
-      }, run)
+      local root = vim.fn.getcwd()
+      vim.notify(
+        "Scanning .NET projects…",
+        vim.log.levels.INFO,
+        { title = M.title }
+      )
+      M.project.get_csproj_files_async(root, function(files)
+        if #files == 0 then
+          vim.notify(
+            "No .csproj files found",
+            vim.log.levels.WARN,
+            { title = M.title }
+          )
+          return
+        end
+        vim.ui.select(files, { prompt = "Choose project to debug" }, function(f)
+          run(f and vim.fs.joinpath(root, f))
+        end)
+      end)
     end
   end, { desc = "Debug selected .NET project" })
 

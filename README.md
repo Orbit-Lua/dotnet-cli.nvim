@@ -25,6 +25,8 @@ The manager keeps a startup project, solution, configuration, target framework, 
 
 Open `:DotnetManager` from a .NET workspace. Choose **Workspace** first to select a startup project, configuration, target framework, and optional ASP.NET Core Project launch profile. The selection is shared by build, run, test, and debugging actions. Comet stores output by workspace session; focus its output panel and press `i` or `a` to send a line to an interactive run, watch, or diagnostics job. Press `<C-c>` to stop the current job.
 
+Project and solution pickers show a scanning row immediately, then update when discovery finishes. Generated `bin` and `obj` directories are skipped during discovery. Manager rows use a fallback icon when an action has no specific icon.
+
 ## Manager actions
 
 | Area | Available work |

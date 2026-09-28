@@ -12,16 +12,17 @@ M.spec = {
   icon_hl = "DiagnosticInfo",
   desc = "dotnet format",
   action = function(ctx)
-    local slns = project.get_sln_files()
-    if #slns > 0 then
-      project.select_sln(ctx, function(sln, c)
-        common.run(c, { "dotnet", "format", sln })
-      end)
-    else
-      common.project(ctx, function(f, c)
-        common.run(c, { "dotnet", "format", f })
-      end)
-    end
+    project.get_sln_files_async(vim.fn.getcwd(), function(slns)
+      if #slns > 0 then
+        project.select_sln(ctx, function(sln, c)
+          common.run(c, { "dotnet", "format", sln })
+        end)
+      else
+        common.project(ctx, function(f, c)
+          common.run(c, { "dotnet", "format", f })
+        end)
+      end
+    end)
   end,
 }
 

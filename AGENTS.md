@@ -82,7 +82,8 @@ Mention any check that cannot be run because a local tool is missing.
 - Use `lua/dotnet-cli/job.lua` for command execution. Do not duplicate Neovim
   job handling inside command modules.
 - Use `lua/dotnet-cli/project.lua` for `.csproj`, `.sln`, and `.slnx`
-  discovery.
+  discovery. Manager pickers should use its async discovery functions so large
+  workspaces do not block redraw; skip generated output directories.
 - Keep project selection in `workspace.lua`; command actions should use
   `commands/common.lua` and the shared job runner. Interactive jobs must
   register a Comet terminal on their task context.
