@@ -1,6 +1,4 @@
-# AGENTS.md
-
-<!-- markdownlint-disable MD013 -->
+# AGENTS Instructions
 
 ## Scope and ownership
 
