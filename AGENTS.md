@@ -1,148 +1,78 @@
 # AGENTS.md
 
-## Project Overview
+<!-- markdownlint-disable MD013 -->
 
-This repository is a Neovim plugin for common `.NET` CLI workflows. It is
-implemented in Lua, uses `comet.nvim` as a thin manager UI layer, and uses
-`plenary.nvim` for tests.
+## Scope and ownership
 
-The plugin exposes `require("dotnet-cli").setup()` plus user commands for
-opening the manager, building, publishing, and managing `global.json`. Manager
-actions are small command specs that run `dotnet` commands through shared job
-helpers and project discovery helpers.
+This Lua plugin runs local SDK-style .NET workflows in Neovim.
+`lua/dotnet-cli/init.lua` owns `setup()`, the public exports, and `Dotnet*` user
+commands; `lua/dotnet-cli/commands/` owns manager actions.
+`lua/dotnet-cli/ui.lua` delegates the manager UI to sibling `comet.nvim`. Keep
+.NET behavior here and reusable palette behavior in Comet.
 
-## Project Layout
+| Change | Owner |
+| --- | --- |
+| Option defaults and merging | `lua/dotnet-cli/config.lua` |
+| Structured process execution, stdin, cancellation, sync queries | `lua/dotnet-cli/job.lua` |
+| `.csproj`, `.sln`, `.slnx` discovery and selectors | `lua/dotnet-cli/project.lua` |
+| Selected root, project, solution, configuration, framework, profile | `lua/dotnet-cli/workspace.lua` |
+| Evaluated output metadata and Project launch profiles | `lua/dotnet-cli/msbuild.lua`, `lua/dotnet-cli/launch.lua` |
+| Optional nvim-dap/netcoredbg registration | `lua/dotnet-cli/dap.lua` |
+| CLI output parsing and SDK cache | `lua/dotnet-cli/parsers.lua`, `lua/dotnet-cli/sdk.lua` |
+| Health checks | `lua/dotnet-cli/health.lua` |
 
-```text
-lua/dotnet-cli/init.lua          setup(), user commands, public API
-lua/dotnet-cli/config.lua        default options and user option merging
-lua/dotnet-cli/ui.lua            thin comet.nvim adapter
-lua/dotnet-cli/job.lua           async and sync command runners
-lua/dotnet-cli/project.lua       .csproj, .sln, and .slnx discovery
-lua/dotnet-cli/workspace.lua     per-root selected project and build context
-lua/dotnet-cli/msbuild.lua       evaluated target metadata
-lua/dotnet-cli/launch.lua        Project launch profiles
-lua/dotnet-cli/dap.lua           optional nvim-dap/netcoredbg integration
-lua/dotnet-cli/parsers.lua       pure parsers for dotnet CLI output
-lua/dotnet-cli/sdk.lua           SDK detection and cache
-lua/dotnet-cli/health.lua        :checkhealth integration
-lua/dotnet-cli/commands/         manager command specs
-lua/dotnet-cli/template/         publish profile template
-plugin/dotnet-cli.lua            plugin entry point
-tests/dotnet-cli/                plenary specs
-tests/minimal_init.lua           test runtimepath bootstrap
-docs/images/                     README screenshots
-```
+`plugin/dotnet-cli.lua` is the loader. `tests/dotnet-cli/` contains Plenary
+specs; `tests/minimal_init.lua` bootstraps their runtime path. The bundled
+template at `lua/dotnet-cli/template/dotnet.csproj` is for publish-profile
+behavior: edit it only for a publish-profile task.
 
-## Dependencies
+## Change contracts
 
-Runtime:
+- Keep manager actions as focused command specs. Use `commands/common.lua` and
+  `job.lua` to run commands; pass structured argument arrays and do not
+  duplicate Neovim job handling in action modules.
+- Use the asynchronous discovery functions in `project.lua` for UI pickers. Show
+  an immediate scanning state, then update the active page; skip generated
+  directories and do not let a late result overwrite another view.
+- Store project selection through `workspace.lua`. Query launch targets with
+  `msbuild.lua`; do not guess `bin` paths or parse project XML for evaluated
+  output. Launch profiles come from `launch.lua`.
+- Put CLI output interpretation in pure `parsers.lua` functions. Keep VSTest and
+  Microsoft.Testing.Platform command options distinct.
+- Interactive tasks must register their job and Comet terminal so input and
+  cancellation work. Never print user-secret values into task output or
+  persistent buffers.
+- Preserve existing `require("dotnet-cli")` exports and `Dotnet*` commands
+  unless the task explicitly changes the public API. Update README when
+  commands, setup options, dependencies, manager behavior, health checks, or
+  publish-profile behavior change.
 
-- Neovim with Lua support.
-- `dotnet` available on `PATH`.
-- `comet.nvim` for the manager UI.
-- Optional `nvim-web-devicons` for file icons.
+Lua files follow `.stylua.toml` (two spaces, 80 columns, Unix endings). Modules
+use local `M = {}` and `return M`. Prefer short comments that explain a choice
+rather than repeat code.
 
-Development:
+## Validation
 
-- `stylua` for formatting.
-- `luacheck` for linting.
-- `plenary.nvim` for tests. `tests/minimal_init.lua` looks under the normal
-  lazy.nvim package path and `~/.local/share/nvim/lazy/plenary.nvim`.
+From this repository root:
 
-## Setup And Validation
-
-Run all checks from the repository root:
-
-```bash
+```sh
 make all
 ```
 
-Useful narrower commands:
+`make all` runs `make fmt` (rewrites Lua files), `make lint`
+(`luacheck lua --globals vim`), then `make test` (Plenary specs). Use
+`make lint` and `make test` separately while iterating;
+`stylua --check lua/ --config-path=.stylua.toml` checks formatting without
+rewriting.
 
-```bash
-make fmt
-make lint
-make test
-```
+Add focused specs when changing parsers, config defaults, command arrays,
+project discovery, workspace state, SDK caching, MSBuild/launch behavior, DAP
+registration, test-runner options, or job behavior. Use temporary project
+directories for discovery tests and restore the working directory before the
+test ends. For documentation-only edits, validate links and `git diff --check`;
+running the full Lua suite is useful when examples or commands change.
 
-`make all` runs `make fmt`, `make lint`, and `make test` in that order.
-`make lint` invokes `luacheck lua --globals vim`. `make test` runs:
-
-```bash
-nvim --headless -u tests/minimal_init.lua \
-  -c "PlenaryBustedDirectory tests/dotnet-cli { minimal_init = 'tests/minimal_init.lua' }"
-```
-
-Mention any check that cannot be run because a local tool is missing.
-
-## Development Workflow
-
-- Keep manager actions in `lua/dotnet-cli/commands/` as small command specs.
-- Use `lua/dotnet-cli/job.lua` for command execution. Do not duplicate Neovim
-  job handling inside command modules.
-- Use `lua/dotnet-cli/project.lua` for `.csproj`, `.sln`, and `.slnx`
-  discovery. Manager pickers should use its async discovery functions so large
-  workspaces do not block redraw; skip generated output directories.
-- Keep project selection in `workspace.lua`; command actions should use
-  `commands/common.lua` and the shared job runner. Interactive jobs must
-  register a Comet terminal on their task context.
-- Query evaluated output paths with `msbuild.lua`. Do not infer debugger paths
-  from project XML or a hard-coded `bin` layout.
-- Keep output parsing in `lua/dotnet-cli/parsers.lua`; parser functions should
-  remain pure and covered by focused specs.
-- Keep `lua/dotnet-cli/ui.lua` as a thin `comet.nvim` shim unless the UI
-  integration itself changes.
-- Do not edit `lua/dotnet-cli/template/dotnet.csproj` unless the task involves
-  publish-profile behavior.
-
-## Testing Instructions
-
-Add or update tests when changing:
-
-- parser behavior in `lua/dotnet-cli/parsers.lua`;
-- config defaults or merge behavior in `lua/dotnet-cli/config.lua`;
-- command generation, especially build/publish command arrays;
-- project or solution discovery;
-- SDK helper behavior and caching;
-- job runner behavior.
-- workspace selection, launch profiles, DAP command generation, and test-runner
-  option differences.
-
-Prefer focused specs under `tests/dotnet-cli/` that exercise the changed module
-directly. Use temporary directories for project discovery tests and restore the
-original working directory before assertions finish.
-
-## Code Style
-
-- Lua files use Stylua settings from `.stylua.toml`: 2-space indentation,
-  Unix line endings, 80-column width, and automatic preferred double quotes.
-- Keep modules table-based with local `M = {}` and `return M`, matching the
-  existing code.
-- Prefer structured command arrays such as `{ "dotnet", "build", project }`
-  over shell-joined strings unless the called API requires a string.
-- Keep comments short and useful. Avoid comments that restate obvious code.
-- Preserve existing public module exports from `lua/dotnet-cli/init.lua` unless
-  a task explicitly changes the public API.
-
-## User-Facing Documentation
-
-Update `README.md` when user-facing behavior changes, including:
-
-- new or renamed commands;
-- setup options or changed defaults;
-- changed manager actions;
-- dependency changes;
-- health check behavior;
-- publish-profile behavior.
-
-The README intentionally does not duplicate license, changelog, or contribution
-policy content.
-
-## Handoff Notes
-
-- Preserve unrelated user changes in the working tree.
-- Report checks run and checks skipped.
-- Include exact failure output or missing tool names when validation cannot
-  complete.
-- If behavior changes but tests were not added, explain the remaining risk.
+`stylua`, `luacheck`, and `plenary.nvim` are development dependencies.
+`tests/minimal_init.lua` searches Neovim's lazy.nvim data directory and
+`~/.local/share/nvim/lazy/plenary.nvim` for Plenary. Report any check skipped
+because a local tool is missing, and preserve unrelated working-tree changes.
