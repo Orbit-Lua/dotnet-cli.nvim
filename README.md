@@ -196,6 +196,8 @@ make all
 Set `DOTNET_TEST_ADAPTER` to test a specific native debugger executable.
 Set `DOTNET_TEST_COMET` to test a local Comet checkout.
 `make all` retains formatting, lint, and complete suite execution.
+CI runs `just all`, `just test-integration`, and `just test-debug` on Linux.
+Run the same recipes locally on Windows before each push.
 Repository editing and test rules are in
 [AGENTS.md](AGENTS.md).
 

@@ -1,0 +1,98 @@
+name: Validate dotnet-cli.nvim
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEOVIM_VERSION: v0.12.5
+  STYLUA_VERSION: 2.4.0
+  NETCOREDBG_VERSION: 3.2.0-1092
+  # Test dependency revisions match the OrbitVim lock file.
+  PLENARY_REVISION: 74b06c6c75e4eeb3108ec01852001636d85a932b
+  COMET_REVISION: b30afe9e5fcd5445804e584eb1cadf68c64873fe
+  NVIM_DAP_REVISION: 8aba1e3805438ee6f74207e0b7385ef951bb9945
+
+jobs:
+  # Windows runs the same recipes locally before each push.
+  validate:
+    name: Validate plugin on ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Neovim
+        run: |
+          name=nvim-linux-x86_64
+          curl -fsSL -o "$RUNNER_TEMP/$name.tar.gz" \
+            "https://github.com/neovim/neovim/releases/download/$NEOVIM_VERSION/$name.tar.gz"
+          tar -C "$RUNNER_TEMP" -xzf "$RUNNER_TEMP/$name.tar.gz"
+          echo "$RUNNER_TEMP/$name/bin" >> "$GITHUB_PATH"
+
+      - name: Install just
+        uses: extractions/setup-just@v4
+
+      - name: Install StyLua
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/stylua.zip" \
+            "https://github.com/JohnnyMorganz/StyLua/releases/download/v$STYLUA_VERSION/stylua-linux-x86_64.zip"
+          echo "f9c84c210712061cb03ab8354a34a5d4f5fcf1f369d2ce916bea3ab9f7addac8  $RUNNER_TEMP/stylua.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/stylua.zip" -d "$RUNNER_TEMP/stylua"
+          chmod +x "$RUNNER_TEMP/stylua/stylua"
+          echo "$RUNNER_TEMP/stylua" >> "$GITHUB_PATH"
+
+      - name: Install Luacheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y luarocks
+          sudo luarocks install luacheck 1.2.0-1
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install netcoredbg
+        run: |
+          archive="$RUNNER_TEMP/netcoredbg.tar.gz"
+          curl -fsSL -o "$archive" \
+            "https://github.com/Samsung/netcoredbg/releases/download/$NETCOREDBG_VERSION/netcoredbg-linux-amd64.tar.gz"
+          echo "080eb3b2d2152465f599d3b33d1ee6e747794e11cc0a3773ec689f5e5f2c5afa  $archive" | sha256sum -c -
+          tar -C "$RUNNER_TEMP" -xzf "$archive"
+          echo "DOTNET_TEST_ADAPTER=$RUNNER_TEMP/netcoredbg/netcoredbg" >> "$GITHUB_ENV"
+
+      - name: Fetch pinned test plugins
+        run: |
+          plugins="$RUNNER_TEMP/plugins"
+          fetch() {
+            git init -q "$plugins/$1"
+            git -C "$plugins/$1" fetch -q --depth 1 "https://github.com/$2.git" "$3"
+            git -C "$plugins/$1" checkout -q FETCH_HEAD
+          }
+          fetch plenary.nvim nvim-lua/plenary.nvim "$PLENARY_REVISION"
+          fetch comet.nvim Orbit-Lua/comet.nvim "$COMET_REVISION"
+          fetch nvim-dap mfussenegger/nvim-dap "$NVIM_DAP_REVISION"
+          echo "DOTNET_TEST_PLUGINS=$plugins" >> "$GITHUB_ENV"
+
+      - name: Check Lua and run core specs
+        run: just all
+
+      - name: Run process, completion and persistence specs
+        run: just test-integration
+
+      - name: Debug a .NET fixture with netcoredbg
+        run: just test-debug
