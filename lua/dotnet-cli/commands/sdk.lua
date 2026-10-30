@@ -13,7 +13,7 @@ M.spec_list_sdks = {
     ctx:clear()
     ctx:append("$ dotnet --list-sdks")
     ctx:append("")
-    local lines, ok = job.run_sync("dotnet --list-sdks")
+    local lines, ok = job.run_sync({ "dotnet", "--list-sdks" })
     if not ok then
       ctx:append("Command failed.")
     else
@@ -32,7 +32,7 @@ M.spec_list_runtimes = {
     ctx:clear()
     ctx:append("$ dotnet --list-runtimes")
     ctx:append("")
-    local lines, ok = job.run_sync("dotnet --list-runtimes")
+    local lines, ok = job.run_sync({ "dotnet", "--list-runtimes" })
     if not ok then
       ctx:append("Command failed.")
     else
@@ -63,7 +63,7 @@ M.spec_global_json = {
       end
     end
 
-    local sdk_lines, ok = job.run_sync("dotnet --list-sdks")
+    local sdk_lines, ok = job.run_sync({ "dotnet", "--list-sdks" })
     if not ok or #sdk_lines == 0 then
       ctx:append("Failed to list .NET SDKs. Is dotnet installed?")
       return

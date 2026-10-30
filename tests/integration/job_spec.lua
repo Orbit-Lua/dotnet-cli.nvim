@@ -26,13 +26,40 @@ describe("native process adapter", function()
   )
 
   it("preserves the legacy string entry point without CR suffixes", function()
+    -- Neovim derives 'shell' from the caller's SHELL, so Git Bash would pair
+    -- bash with the cmd.exe flags. Pin the platform shell for this case.
+    local names = {
+      "shell",
+      "shellcmdflag",
+      "shellquote",
+      "shellxquote",
+    }
+    local saved = {}
+    for _, name in ipairs(names) do
+      saved[name] = vim.o[name]
+    end
+    if vim.fn.has("win32") == 1 then
+      vim.o.shell = "cmd.exe"
+      vim.o.shellcmdflag = "/s /c"
+      vim.o.shellquote = ""
+      vim.o.shellxquote = '"'
+    else
+      vim.o.shell = "sh"
+      vim.o.shellcmdflag = "-c"
+      vim.o.shellquote = ""
+      vim.o.shellxquote = ""
+    end
     local cmd = '"'
       .. vim.v.progpath
       .. '" --headless --clean -i NONE -l "'
       .. fixture
       .. '" success'
-    local lines, ok = job.run_sync(cmd)
-    assert.is_true(ok)
+    local ok, lines, success = pcall(job.run_sync, cmd)
+    for _, name in ipairs(names) do
+      vim.o[name] = saved[name]
+    end
+    assert(ok, lines)
+    assert.is_true(success)
     assert.same({ "hello" }, lines)
   end)
 
