@@ -141,6 +141,13 @@ On Windows, the adapter uses a native executable instead of Mason's batch shim.
 It checks `PATH` and the Mason installation root.
 An explicit `adapter_path` takes precedence and must identify a native executable.
 Failed debug builds report their output without starting the adapter.
+Launched programs write their output to nvim-dap, such as the REPL, instead of
+a separate console window. They cannot read input in this mode. Set
+`dap.integrated_console = false` to run them in an external console that
+accepts input; on Windows it opens a new window.
+On Windows, the integrated console switches Neovim's console output code page
+to UTF-8 so non-ASCII output stays readable. The previous code page returns
+when the last .NET debug session ends or Neovim exits.
 Both `:DotnetDebug` and the registered `:DapNew` launch configuration resolve
 the startup project through the same workflow. An existing selection takes
 precedence. Without a selection, one runnable non-test project is selected
@@ -168,6 +175,7 @@ options. `OutputPath`, `OutDir`, and `output_dir_template` affect that path.
 | `default_build_config` | `"Debug"` | Configuration for direct builds. |
 | `output_dir_template` | unset | Optional build output directory; `{config}` is replaced by the configuration. Leave unset for the SDK output layout used by MSBuild and the debugger. |
 | `nuget.allow_insecure_connections` | `false` | Allow insecure connections when adding a NuGet source. |
+| `dap.integrated_console` | `true` | Send launched debuggee output to nvim-dap. Set `false` for an external console with input. |
 
 The public `workspace`, `msbuild`, `launch`, `job`, `project`, `sdk`, and
 `parsers` modules are available through `require("dotnet-cli")` for other Neovim

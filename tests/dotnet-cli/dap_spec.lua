@@ -2,9 +2,12 @@ local workspace = require("dotnet-cli.workspace")
 local msbuild = require("dotnet-cli.msbuild")
 local launch = require("dotnet-cli.launch")
 local dotnet_dap = require("dotnet-cli.dap")
+local config = require("dotnet-cli.config")
+local job = require("dotnet-cli.job")
 
 describe(".NET DAP integration", function()
   local original_get, original_profiles, original_dap, original_utils
+  local original_run
   local temp
 
   before_each(function()
@@ -17,6 +20,7 @@ describe(".NET DAP integration", function()
     original_profiles = launch.profiles
     original_dap = package.loaded.dap
     original_utils = package.loaded["dap.utils"]
+    original_run = job.run
   end)
 
   after_each(function()
@@ -24,6 +28,8 @@ describe(".NET DAP integration", function()
     launch.profiles = original_profiles
     package.loaded.dap = original_dap
     package.loaded["dap.utils"] = original_utils
+    job.run = original_run
+    config.setup()
     workspace.reset()
     vim.fn.delete(temp, "rf")
   end)
@@ -62,5 +68,26 @@ describe(".NET DAP integration", function()
     assert.are.equal("Custom", dap.configurations.cs[1].name)
     assert.are.equal("Dotnet: Launch selected project", dap.configurations.cs[2].name)
     assert.are.equal("Dotnet: Attach to process", dap.configurations.cs[3].name)
+  end)
+  it("keeps launched debuggees in Neovim's console unless configured otherwise", function()
+    local dap = { adapters = {}, configurations = {} }
+    package.loaded.dap = dap
+    package.loaded["dap.utils"] = { pick_process = function() return 1 end }
+    job.run = function(_, _, _, opts)
+      opts.on_exit(0)
+      return 1
+    end
+    local function launched_adapter()
+      local adapter
+      dap.adapters.coreclr(function(value)
+        adapter = value
+      end, { request = "launch", dotnet_project = vim.fs.joinpath(temp, "App.csproj"), dotnet_root = temp })
+      assert.is_true(vim.wait(1000, function() return adapter ~= nil end))
+      return adapter
+    end
+    assert.is_true(dotnet_dap.setup({ adapter_path = vim.v.progpath }))
+    assert.is_false(launched_adapter().options.detached)
+    config.setup({ dap = { integrated_console = false } })
+    assert.is_true(launched_adapter().options.detached)
   end)
 end)

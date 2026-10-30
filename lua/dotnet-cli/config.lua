@@ -9,9 +9,13 @@ local M = {}
 ---@field default_build_config string Default build configuration
 ---@field output_dir_template string? Optional build output directory template
 ---@field nuget DotnetCliNugetConfig NuGet-related configuration
+---@field dap DotnetCliDapConfig Debug adapter configuration
 
 ---@class DotnetCliNugetConfig
 ---@field allow_insecure_connections boolean Allow insecure connections for NuGet sources (default false)
+
+---@class DotnetCliDapConfig
+---@field integrated_console boolean Route debuggee output to nvim-dap instead of a console window (default true)
 
 ---@type DotnetCliConfig
 M.defaults = {
@@ -20,6 +24,9 @@ M.defaults = {
   default_build_config = "Debug",
   nuget = {
     allow_insecure_connections = false,
+  },
+  dap = {
+    integrated_console = true,
   },
 }
 

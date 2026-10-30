@@ -1,3 +1,4 @@
+local settings = require("dotnet-cli.config")
 local job = require("dotnet-cli.job")
 local launch = require("dotnet-cli.launch")
 local msbuild = require("dotnet-cli.msbuild")
@@ -6,6 +7,58 @@ local workspace = require("dotnet-cli.workspace")
 local M = {}
 
 local adapter_type = "coreclr"
+local utf8_code_page = 65001
+
+-- Code page to restore after the last .NET session, if this module changed it.
+local saved_code_page
+
+local function console_api()
+  if vim.fn.has("win32") ~= 1 then
+    return nil
+  end
+  local ok, ffi = pcall(require, "ffi")
+  if not ok then
+    return nil
+  end
+  -- Another plugin may have declared these already.
+  pcall(
+    ffi.cdef,
+    "unsigned int GetConsoleOutputCP(void); int SetConsoleOutputCP(unsigned int);"
+  )
+  return ffi.C
+end
+
+-- The integrated debuggee shares Neovim's console and encodes stdout with its
+-- output code page. netcoredbg forwards those bytes unchanged, while nvim-dap
+-- reads UTF-8, so switch the console to UTF-8 for the session.
+local function use_utf8_console()
+  local api = console_api()
+  if not api or saved_code_page then
+    return
+  end
+  local current = api.GetConsoleOutputCP()
+  if current ~= 0 and current ~= utf8_code_page then
+    if api.SetConsoleOutputCP(utf8_code_page) ~= 0 then
+      saved_code_page = current
+    end
+  end
+end
+
+local function restore_console(dap)
+  if not saved_code_page then
+    return
+  end
+  for _, session in pairs(dap and dap.sessions and dap.sessions() or {}) do
+    if session.config and session.config.type == adapter_type then
+      return
+    end
+  end
+  local api = console_api()
+  if api then
+    api.SetConsoleOutputCP(saved_code_page)
+  end
+  saved_code_page = nil
+end
 
 local function split_arguments(value)
   local result, current, quote = {}, "", nil
@@ -172,6 +225,12 @@ M.setup = function(opts)
       type = "executable",
       command = executable,
       args = { "--interpreter=vscode" },
+      -- A detached adapter has no console on Windows, so Windows opens a
+      -- window for the debuggee. Attached, the debuggee shares Neovim's
+      -- console and netcoredbg forwards its stdio as DAP output events.
+      options = {
+        detached = not settings.get().dap.integrated_console,
+      },
     }
     if config.request == "attach" then
       callback(adapter)
@@ -204,6 +263,9 @@ M.setup = function(opts)
         on_exit = function(code)
           vim.schedule(function()
             if code == 0 then
+              if not adapter.options.detached then
+                use_utf8_console()
+              end
               callback(adapter)
             else
               vim.notify(
@@ -231,6 +293,16 @@ M.setup = function(opts)
     end
   end
   dap.listeners = dap.listeners or {}
+  dap.listeners.on_session = dap.listeners.on_session or {}
+  dap.listeners.on_session["dotnet-cli"] = function()
+    restore_console(dap)
+  end
+  vim.api.nvim_create_autocmd("VimLeavePre", {
+    group = vim.api.nvim_create_augroup("DotnetCliDap", { clear = true }),
+    callback = function()
+      restore_console()
+    end,
+  })
   dap.listeners.on_config = dap.listeners.on_config or {}
   dap.listeners.on_config["dotnet-cli"] = function(config)
     if not config.dotnet_cli_owned or config.request ~= "launch" then

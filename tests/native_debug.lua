@@ -3,6 +3,13 @@ local cwd = vim.fn.getcwd()
 local child
 local dap = require("dap")
 dap.set_log_level("DEBUG")
+local console
+if vim.fn.has("win32") == 1 then
+  local ffi = require("ffi")
+  pcall(ffi.cdef, "unsigned int GetConsoleOutputCP(void);")
+  console = ffi.C
+end
+local code_page = console and console.GetConsoleOutputCP()
 local ok, err = pcall(function()
   assert(vim.fn.executable("dotnet") == 1, "dotnet is required")
   vim.fn.mkdir(root, "p")
@@ -21,7 +28,7 @@ local ok, err = pcall(function()
     "{",
     "    static void Main()",
     "    {",
-    '        Console.WriteLine("fixture ready");',
+    '        Console.WriteLine("fixture ready 中文");',
     "        System.Threading.Thread.Sleep(300000);",
     "    }",
     "}",
@@ -49,7 +56,14 @@ local ok, err = pcall(function()
   end
   local stopped
   dap.listeners.after.event_stopped["native-test"] = function(session, body)
-    stopped = { session = session, reason = body.reason }
+    stopped =
+      { session = session, reason = body.reason, thread = body.threadId }
+  end
+  local output = ""
+  dap.listeners.after.event_output["native-test"] = function(_, body)
+    if body.category == "stdout" then
+      output = output .. body.output
+    end
   end
   require("dap.breakpoints").set({}, buffer, 6)
   vim.ui.select = function()
@@ -69,6 +83,23 @@ local ok, err = pcall(function()
   assert(
     vim.fs.normalize(config.program) == root .. "/overridden/Debug/App.dll",
     "output override and debugger target differ"
+  )
+  -- The integrated console must carry debuggee stdout through DAP; a
+  -- detached Windows adapter shows it in a separate console window instead.
+  stopped.session:request(
+    "continue",
+    { threadId = stopped.thread },
+    function() end
+  )
+  assert(
+    vim.wait(10000, function()
+      return output:find("fixture ready", 1, true) ~= nil
+    end),
+    "debuggee stdout did not reach the DAP console"
+  )
+  assert(
+    output:find("fixture ready 中文", 1, true),
+    "debuggee stdout is not UTF-8: " .. output
   )
   local disconnected = false
   stopped.session:disconnect({ terminateDebuggee = true }, function()
@@ -140,8 +171,18 @@ local ok, err = pcall(function()
     end),
     "attach disconnect timed out"
   )
+  assert(
+    vim.wait(5000, function()
+      return next(dap.sessions()) == nil
+    end),
+    "debug sessions did not close"
+  )
+  assert(
+    not console or console.GetConsoleOutputCP() == code_page,
+    "console code page was not restored"
+  )
   print(
-    "Native DapNew launch, output override, source breakpoint, attach, pause, and disconnect passed"
+    "Native DapNew launch, output override, source breakpoint, console output, attach, pause, and disconnect passed"
   )
 end)
 if dap.session() then
