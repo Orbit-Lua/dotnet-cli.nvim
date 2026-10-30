@@ -13,12 +13,21 @@ end
 
 M.project = function(ctx, callback)
   local workspace = require("dotnet-cli.workspace")
+  local bound_root = ctx.session_id
+    and ctx.session_id:match("^dotnet_manager:(.*)$")
+  if
+    bound_root
+    and require("dotnet-cli.state").identity(workspace.current().root)
+      ~= require("dotnet-cli.state").identity(bound_root)
+  then
+    ctx:append("Workspace changed; reopen Dotnet Manager")
+    return
+  end
   local active = workspace.current().project
   if active and vim.fn.filereadable(active) == 1 then
     callback(active, ctx)
   else
     project.select_csproj(ctx, function(selected, child)
-      workspace.select_project(selected)
       callback(selected, child)
     end)
   end

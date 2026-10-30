@@ -28,6 +28,7 @@ M.get_all = function()
   local sdk_cmd = require("dotnet-cli.commands.sdk")
 
   return {
+    require("dotnet-cli.command_line").spec,
     workspace.spec,
     build.spec,
     run.spec,

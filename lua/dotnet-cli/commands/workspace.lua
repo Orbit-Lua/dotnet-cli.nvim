@@ -19,6 +19,7 @@ local function path_items(paths, icon, root)
 end
 
 local function select_paths(ctx, paths, title, callback, icon)
+  local captured = workspace.current()
   if #paths == 0 then
     ctx:clear()
     ctx:append("No files found in " .. vim.fn.getcwd())
@@ -27,22 +28,36 @@ local function select_paths(ctx, paths, title, callback, icon)
   ctx:select(path_items(paths, icon), {
     title = title,
     on_select = function(item, child)
+      if not workspace.matches(captured) then
+        child:append("Workspace changed; reopen the selection")
+        return
+      end
       callback(item._raw, child)
+      captured = workspace.current()
     end,
   })
 end
 
 local function select_paths_async(ctx, finder, title, callback, icon)
-  local root = workspace.current().root
+  local captured = workspace.current()
+  local root = captured.root
   ctx:select({ { name = "Scanning…", icon = "󰈚 " } }, {
     title = title,
     on_select = function(item, child)
       if item._raw then
-        callback(item._raw, child)
+        if not workspace.matches(captured) then
+          child:append("Workspace changed; reopen the selection")
+          return
+        end
+        callback(item._raw, child, captured)
+        captured = workspace.current()
       end
     end,
   })
   finder(root, function(paths, err)
+    if not workspace.matches(captured) then
+      return
+    end
     if err then
       ctx:append("Discovery failed: " .. err)
     end
@@ -101,14 +116,22 @@ M.spec = {
     }, {
       title = "Workspace Action",
       on_select = function(item, child)
+        if
+          require("dotnet-cli.state").identity(workspace.current().root)
+          ~= require("dotnet-cli.state").identity(current.root)
+        then
+          child:append("Workspace changed; reopen Dotnet Manager")
+          return
+        end
         local action = item._raw
         if action == "project" then
           select_paths_async(
             child,
             project.get_csproj_files_async,
             "Startup Project",
-            function(path, c)
-              local chosen = workspace.select_project(path)
+            function(path, c, captured)
+              local chosen =
+                workspace.select_project(path, { root = captured.root })
               c:clear()
               c:append("Startup project: " .. chosen.project)
             end,

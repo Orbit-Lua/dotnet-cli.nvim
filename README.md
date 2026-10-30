@@ -25,6 +25,7 @@ guide](docs/capabilities.md) for provider requirements and support limits.
 - [comet.nvim](https://github.com/Orbit-Lua/comet.nvim) for `:DotnetManager`.
 - Optional: [nvim-dap](https://github.com/mfussenegger/nvim-dap) and
   `netcoredbg` for `:DotnetDebug` and `:DotnetAttach`.
+  Use netcoredbg 3.2.0-1092 or newer for the validated .NET 10 workflow.
 - Optional: `dotnet-ef`, `dotnet-counters`, `dotnet-trace`, and `dotnet-dump`
   for their matching actions. Global installations and local tool manifests are
   supported.
@@ -84,6 +85,31 @@ job. Diagnostic artifacts go under `artifacts/diagnostics` in the selected
 workspace. The separate **Publish** action retains the bundled `FolderProfile`
 behavior; **Pack & Publish** provides configurable local publishing.
 
+### Command input
+
+Open **Command Line** in the manager to type a `dotnet` command.
+Suggestions come from `dotnet complete` and workspace project discovery.
+Press Tab to accept a suggestion.
+Press Enter to run the command.
+Use `<C-c>` to stop the page's running task.
+
+The command page supports build, clean, restore, test, run, publish, pack, and
+format commands. SDK information and help options are also supported.
+Use the existing manager actions for EF, NuGet, secrets, and SDK extensions.
+Credential-bearing arguments are rejected before completion or execution.
+Command input is not echoed, saved, or interpreted by a shell.
+
+Quote paths containing spaces with single or double quotes.
+Single quotes preserve Windows backslashes literally.
+Double quotes use backslash escaping before a double quote.
+Empty quoted arguments are preserved.
+Shell expansion, pipes, and command chaining are not evaluated.
+
+Build commands default to the captured project, configuration, and framework.
+Explicit command options take precedence.
+Run options are inserted before `--`, which separates application arguments.
+Reopen Command Line after changing the workspace selection.
+
 ### Direct commands
 
 | Command | Purpose |
@@ -111,11 +137,27 @@ end
 
 If `netcoredbg` is outside `PATH`, call
 `setup_dap({ adapter_path = "/absolute/path/to/netcoredbg" })`.
-Select the startup project in the manager
-before `:DotnetDebug`, or set it from Lua with
-`dotnet.workspace.select_project("/absolute/path/to/App.csproj")`. Debug launch
-uses the target path evaluated by MSBuild. A class library can be built but
-cannot be launched directly.
+On Windows, the adapter uses a native executable instead of Mason's batch shim.
+It checks `PATH` and the Mason installation root.
+An explicit `adapter_path` takes precedence and must identify a native executable.
+Failed debug builds report their output without starting the adapter.
+Both `:DotnetDebug` and the registered `:DapNew` launch configuration resolve
+the startup project through the same workflow. An existing selection takes
+precedence. Without a selection, one runnable non-test project is selected
+automatically. Multiple applications open a picker. Libraries and test projects
+are not selected for debug launch.
+
+Select a project explicitly in the manager, or call
+`dotnet.workspace.select_project("/absolute/path/to/App.csproj")`.
+Selections survive editor restarts under `stdpath('state')/dotnet-cli/workspaces/`.
+Each workspace stores project, solution, configuration, framework, and profile
+identifiers. It stores no launch environment values. Missing selected projects
+stop launch until you select a replacement. Invalid state also requires
+reselection. A failed state write preserves the previous record and reports a
+warning. Concurrent updates to one workspace use the last successful write.
+
+Debug launch uses the target path evaluated by MSBuild with the same build
+options. `OutputPath`, `OutDir`, and `output_dir_template` affect that path.
 
 `setup()` accepts these options:
 
@@ -133,16 +175,20 @@ integrations.
 
 ## Development
 
-From the repository root, install `stylua`, `luacheck`, and
+From the repository root, install `just`, `stylua`, `luacheck`, and
 [plenary.nvim](https://github.com/nvim-lua/plenary.nvim), then run:
 
 ```sh
 make all
 ```
 
-`make all` formats Lua source, lints it, and runs Plenary specs under
-`tests/dotnet-cli/`. Use `make fmt`, `make lint`, or `make test` for an
-individual stage. Repository editing and test rules are in
+`just all` checks formatting, lints source, and runs hermetic core specs.
+`just test-integration` executes native process, SDK completion, and restart tests.
+`just test-debug` builds an isolated .NET 10 fixture and validates real debugging.
+Set `DOTNET_TEST_ADAPTER` to test a specific native debugger executable.
+Set `DOTNET_TEST_COMET` to test a local Comet checkout.
+`make all` retains formatting, lint, and complete suite execution.
+Repository editing and test rules are in
 [AGENTS.md](AGENTS.md).
 
 This project is licensed under [GPL-3.0](LICENSE).

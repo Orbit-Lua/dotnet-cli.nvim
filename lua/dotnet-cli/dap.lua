@@ -53,8 +53,8 @@ local function selected_project()
   return selected
 end
 
-local function selected_profile(project)
-  local name = workspace.current().profile
+local function selected_profile(project, selected)
+  local name = selected.profile
   if not name then
     return nil
   end
@@ -66,29 +66,35 @@ local function selected_profile(project)
   return nil
 end
 
-M.build_cmd = function(project, configuration, tfm)
-  local cmd = { "dotnet", "build", project, "-c", configuration or "Debug" }
-  if tfm then
-    vim.list_extend(cmd, { "-f", tfm })
-  end
-  return cmd
-end
+M.build_cmd = require("dotnet-cli.build").argv
 
-M.config = function()
-  local project, err = selected_project()
+M.config = function(context, evaluated)
+  local project, err
+  if context then
+    project = context.project
+  else
+    project, err = selected_project()
+  end
   if not project then
     return nil, err
   end
-  local selected = workspace.current()
-  local metadata, query_err =
-    msbuild.get(project, selected.configuration, selected.tfm)
+  local selected = context or workspace.current()
+  local metadata, query_err = evaluated, nil
+  if not metadata then
+    metadata, query_err =
+      msbuild.get(project, selected.configuration, selected.tfm, selected.root)
+  end
   if not metadata then
     return nil, query_err
   end
-  if metadata.OutputType == "Library" then
+  if metadata.OutputType == "Library" or metadata.IsTestProject then
     return nil, "A class library cannot be launched directly"
   end
-  local profile = selected_profile(project)
+  local profile = selected_profile(project, selected)
+  if selected.profile and not profile then
+    return nil,
+      "The selected launch profile is unavailable; select a profile in Dotnet Manager"
+  end
   local env = vim.deepcopy(profile and profile.environmentVariables or {})
   if profile and profile.applicationUrl and not env.ASPNETCORE_URLS then
     env.ASPNETCORE_URLS = profile.applicationUrl
@@ -104,6 +110,7 @@ M.config = function()
     ) or {},
     env = env,
     dotnet_project = project,
+    dotnet_root = selected.root,
     dotnet_configuration = selected.configuration,
     dotnet_tfm = selected.tfm,
     justMyCode = false,
@@ -116,8 +123,31 @@ local function adapter_path(opts)
   if configured and configured ~= "" then
     return configured
   end
-  local path = vim.fn.exepath("netcoredbg")
-  return path ~= "" and path or nil
+  local windows = vim.fn.has("win32") == 1
+  local path = vim.fn.exepath(windows and "netcoredbg.exe" or "netcoredbg")
+  if path ~= "" then
+    return path
+  end
+  if windows then
+    -- Mason's batch shim cannot carry the DAP stdio transport reliably.
+    local shim = vim.fn.exepath("netcoredbg")
+    local root = vim.env.MASON
+    if not root and shim ~= "" then
+      root = vim.fs.dirname(vim.fs.dirname(shim))
+    end
+    if root then
+      local native = vim.fs.joinpath(
+        root,
+        "packages",
+        "netcoredbg",
+        "netcoredbg",
+        "netcoredbg.exe"
+      )
+      if vim.fn.executable(native) == 1 then
+        return native
+      end
+    end
+  end
 end
 
 M.setup = function(opts)
@@ -129,6 +159,12 @@ M.setup = function(opts)
   local executable = adapter_path(opts)
   if not executable or vim.fn.executable(executable) ~= 1 then
     return false, "netcoredbg is unavailable; install it or set adapter_path"
+  end
+  if
+    executable:lower():match("%.cmd$") or executable:lower():match("%.bat$")
+  then
+    return false,
+      "netcoredbg requires a native executable; set adapter_path to netcoredbg.exe"
   end
 
   dap.adapters[adapter_type] = function(callback, config)
@@ -146,20 +182,33 @@ M.setup = function(opts)
       vim.notify("No .NET startup project selected", vim.log.levels.ERROR)
       return
     end
-    local root = workspace.current().root
-    job.run(
-      M.build_cmd(project, config.dotnet_configuration, config.dotnet_tfm),
+    local root = config.dotnet_root or workspace.current().root
+    local output = {}
+    local function collect(_, lines)
+      for _, line in ipairs(lines) do
+        if line ~= "" then
+          output[#output + 1] = line
+        end
+      end
+    end
+    local id = job.run(
+      M.build_cmd(project, config.dotnet_configuration, config.dotnet_tfm, root),
       nil,
       nil,
       {
         cwd = root,
+        stdout_buffered = true,
+        stderr_buffered = true,
+        on_stdout = collect,
+        on_stderr = collect,
         on_exit = function(code)
           vim.schedule(function()
             if code == 0 then
               callback(adapter)
             else
               vim.notify(
-                ".NET build failed; debugger was not started",
+                ".NET build failed; debugger was not started\n"
+                  .. table.concat(output, "\n"),
                 vim.log.levels.ERROR
               )
             end
@@ -167,6 +216,12 @@ M.setup = function(opts)
         end,
       }
     )
+    if not id or id <= 0 then
+      vim.notify(
+        "Could not start the .NET build; check the dotnet executable",
+        vim.log.levels.ERROR
+      )
+    end
   end
 
   dap.configurations.cs = dap.configurations.cs or {}
@@ -175,40 +230,33 @@ M.setup = function(opts)
       table.remove(dap.configurations.cs, i)
     end
   end
+  dap.listeners = dap.listeners or {}
+  dap.listeners.on_config = dap.listeners.on_config or {}
+  dap.listeners.on_config["dotnet-cli"] = function(config)
+    if not config.dotnet_cli_owned or config.request ~= "launch" then
+      return config
+    end
+    local thread = coroutine.running()
+    require("dotnet-cli.startup").resolve(function(context, metadata, err)
+      coroutine.resume(thread, context, metadata, err)
+    end)
+    local context, metadata, err = coroutine.yield()
+    if not context then
+      vim.notify(err, vim.log.levels.WARN, { title = "Dotnet" })
+      return vim.tbl_extend("force", config, { program = dap.ABORT })
+    end
+    local resolved, config_err = M.config(context, metadata)
+    if not resolved then
+      vim.notify(config_err, vim.log.levels.WARN, { title = "Dotnet" })
+      return vim.tbl_extend("force", config, { program = dap.ABORT })
+    end
+    return vim.tbl_extend("force", config, resolved)
+  end
   table.insert(dap.configurations.cs, {
     type = adapter_type,
     name = "Dotnet: Launch selected project",
     request = "launch",
     dotnet_cli_owned = true,
-    program = function()
-      local config, err = M.config()
-      if not config then
-        vim.notify(err, vim.log.levels.ERROR)
-        return dap.ABORT
-      end
-      return config.program
-    end,
-    cwd = function()
-      local config = M.config()
-      return config and config.cwd or dap.ABORT
-    end,
-    env = function()
-      local config = M.config()
-      return config and config.env or {}
-    end,
-    args = function()
-      local config = M.config()
-      return config and config.args or {}
-    end,
-    dotnet_project = function()
-      return workspace.current().project
-    end,
-    dotnet_configuration = function()
-      return workspace.current().configuration
-    end,
-    dotnet_tfm = function()
-      return workspace.current().tfm
-    end,
   })
   table.insert(dap.configurations.cs, {
     type = adapter_type,
@@ -231,11 +279,18 @@ M.launch = function()
       return false, err
     end
   end
-  local config, err = M.config()
-  if not config then
-    return false, err
-  end
-  dap.run(config)
+  require("dotnet-cli.startup").resolve(function(context, metadata, err)
+    if not context then
+      vim.notify(err, vim.log.levels.WARN, { title = "Dotnet" })
+      return
+    end
+    local config, config_err = M.config(context, metadata)
+    if not config then
+      vim.notify(config_err, vim.log.levels.WARN, { title = "Dotnet" })
+      return
+    end
+    dap.run(config)
+  end)
   return true
 end
 

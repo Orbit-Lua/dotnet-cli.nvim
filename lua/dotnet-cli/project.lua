@@ -33,6 +33,9 @@ local function find_files(extension, root)
   local pattern = root and (vim.fs.normalize(root) .. "/**/*." .. extension)
     or ("**/*." .. extension)
   local files = vim.fn.glob(pattern, false, true)
+  for i, file in ipairs(files) do
+    files[i] = vim.fs.normalize(file)
+  end
   if root then
     for i, file in ipairs(files) do
       files[i] = vim.fs.relpath(root, file) or file
@@ -138,18 +141,31 @@ end
 ---@param ctx CometCtx
 ---@param callback fun(file: string, ctx: CometCtx)
 M.select_csproj = function(ctx, callback)
-  local root = vim.fn.getcwd()
+  local workspace = require("dotnet-cli.workspace")
+  local captured = workspace.current()
+  local root = captured.root
+  local function current()
+    return workspace.matches(captured)
+  end
   ctx:select({ { name = "Scanning projects…", icon = "󰈚 " } }, {
     title = "Select Project",
     on_select = function(item, c)
       if not item._raw then
         return
       end
-      require("dotnet-cli.workspace").select_project(item._raw)
+      if not current() then
+        c:append("Workspace changed; select the project again")
+        return
+      end
+      workspace.select_project(item._raw, { root = root })
       callback(item._raw, c)
     end,
   })
   M.get_csproj_files_async(root, function(files, err)
+    if not current() then
+      ctx:append("Workspace changed; select the project again")
+      return
+    end
     if err then
       ctx:append("Project scan failed: " .. err)
     end
@@ -161,7 +177,7 @@ M.select_csproj = function(ctx, callback)
     local items = {}
     for _, f in ipairs(files) do
       table.insert(items, {
-        _raw = f,
+        _raw = vim.fs.joinpath(root, f),
         icon = icon,
         icon_hl = "DevIconCs",
         name = f,
@@ -169,8 +185,9 @@ M.select_csproj = function(ctx, callback)
     end
     local active = ctx:update(items)
     if #files == 1 and active then
-      require("dotnet-cli.workspace").select_project(files[1])
-      callback(files[1], ctx)
+      local path = vim.fs.joinpath(root, files[1])
+      workspace.select_project(path, { root = root })
+      callback(path, ctx)
     end
   end)
 end

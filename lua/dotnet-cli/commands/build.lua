@@ -4,12 +4,6 @@ local workspace = require("dotnet-cli.workspace")
 
 local M = {}
 
----@param value string
----@return boolean
-local function is_absolute_path(value)
-  return value:match("^/") ~= nil or value:match("^%a:[/\\]") ~= nil
-end
-
 ---@param name string
 ---@return string icon
 ---@return string icon_hl
@@ -24,27 +18,7 @@ local function get_config_icon(name)
   return "󰒓 ", "DiagnosticInfo"
 end
 
----@param proj? string
----@param config? string
----@return string[]
-M.get_cmd = function(proj, config)
-  local cfg = require("dotnet-cli.config").get()
-  config = config or cfg.default_build_config
-
-  local cmd = { "dotnet", "build" }
-  if proj and proj ~= "" then
-    table.insert(cmd, proj)
-  end
-  vim.list_extend(cmd, { "-c", config })
-  if cfg.output_dir_template then
-    local out_dir = cfg.output_dir_template:gsub("{config}", config)
-    if not is_absolute_path(out_dir) then
-      out_dir = vim.fs.joinpath(vim.fn.getcwd(), out_dir)
-    end
-    vim.list_extend(cmd, { "-o", out_dir })
-  end
-  return cmd
-end
+M.get_cmd = require("dotnet-cli.build").argv
 
 ---@type CometCommand
 M.spec = {
@@ -53,6 +27,7 @@ M.spec = {
   icon_hl = "DiagnosticOk",
   desc = "dotnet build",
   action = function(ctx)
+    local captured = workspace.current()
     local cfg = require("dotnet-cli.config").get()
     local configs = cfg.build_configurations
     if not configs or #configs == 0 then
@@ -73,12 +48,21 @@ M.spec = {
     ctx:select(items, {
       title = "Build Configuration",
       on_select = function(item, c)
+        if not workspace.matches(captured) then
+          c:append("Workspace changed; reopen Build")
+          return
+        end
         local config = item._raw
         common.project(c, function(f, c2)
           workspace.set({ configuration = config })
           common.run(
             c2,
-            M.get_cmd(f, config),
+            M.get_cmd(
+              f,
+              config,
+              workspace.current().tfm,
+              workspace.current().root
+            ),
             { cwd = workspace.current().root }
           )
         end)

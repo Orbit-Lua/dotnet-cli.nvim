@@ -2,7 +2,15 @@ local sdk = require("dotnet-cli.sdk")
 local job = require("dotnet-cli.job")
 
 describe("sdk", function()
+  local run_sync
+  before_each(function()
+    run_sync = job.run_sync
+    job.run_sync = function()
+      return { "10.0.403" }, true
+    end
+  end)
   after_each(function()
+    job.run_sync = run_sync
     sdk._reset_cache()
   end)
 

@@ -15,5 +15,5 @@ lint:
 	$(LUACHECK) lua --globals vim
 
 test:
-	nvim --headless -u tests/minimal_init.lua \
-		-c "PlenaryBustedDirectory tests/dotnet-cli { minimal_init = 'tests/minimal_init.lua' }"
+	just test
+	just test-integration

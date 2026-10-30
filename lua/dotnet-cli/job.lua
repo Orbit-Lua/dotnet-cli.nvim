@@ -19,6 +19,14 @@ local function emit(ctx, method, ...)
   end
 end
 
+local function normalize_lines(data)
+  local lines = {}
+  for i, line in ipairs(data) do
+    lines[i] = line:gsub("\r$", "")
+  end
+  return lines
+end
+
 ---Start a structured process specification.
 ---@param spec table { argv: string[], cwd?, env?, interactive?, on_exit? }
 ---@param ctx? CometCtx
@@ -29,19 +37,21 @@ M.start = function(spec, ctx)
     "spec.argv is required"
   )
   local options = {
-    stdout_buffered = false,
-    stderr_buffered = false,
+    stdout_buffered = spec.stdout_buffered or false,
+    stderr_buffered = spec.stderr_buffered or false,
     cwd = spec.cwd,
     env = spec.env,
     clear_env = spec.clear_env,
     pty = spec.interactive or false,
     on_stdout = function(id, data, event)
+      data = normalize_lines(data)
       emit(ctx, "write", data)
       if spec.on_stdout then
         spec.on_stdout(id, data, event)
       end
     end,
     on_stderr = function(id, data, event)
+      data = normalize_lines(data)
       emit(ctx, "write", data)
       if spec.on_stderr then
         spec.on_stderr(id, data, event)
@@ -80,8 +90,10 @@ M.run = function(cmd, ctx, on_complete, opts)
     emit(ctx, "clear")
   end
 
-  emit(ctx, "append", "$ " .. table.concat(cmd, " "))
-  emit(ctx, "append", "")
+  if opts.echo ~= false then
+    emit(ctx, "append", "$ " .. table.concat(cmd, " "))
+    emit(ctx, "append", "")
+  end
 
   local id = M.start({
     argv = cmd,
@@ -90,6 +102,8 @@ M.run = function(cmd, ctx, on_complete, opts)
     clear_env = opts.clear_env,
     interactive = opts.interactive,
     stdin = opts.stdin,
+    stdout_buffered = opts.stdout_buffered,
+    stderr_buffered = opts.stderr_buffered,
     on_stdout = opts.on_stdout,
     on_stderr = opts.on_stderr,
     on_exit = function(code, event, job_ctx, id)
@@ -152,6 +166,9 @@ M.run_sync = function(cmd, opts)
   opts = opts or {}
   if type(cmd) == "string" then
     local lines = vim.fn.systemlist(cmd)
+    for i, line in ipairs(lines) do
+      lines[i] = line:gsub("\r$", "")
+    end
     return lines, vim.v.shell_error == 0
   end
   if vim.system then

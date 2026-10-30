@@ -6,6 +6,8 @@ This plugin targets local SDK-style C# projects. It delegates language intellige
 | --- | --- | --- |
 | Console, library, ASP.NET Core project creation/build/run | Native manager actions | Installed .NET SDK; libraries are built but cannot be launched directly. |
 | `.csproj`, `.sln`, `.slnx` discovery | Native | Project selection is per workspace root. |
+| Startup selection and restart persistence | Native | Reuse valid selections or choose one runnable non-test project. Ambiguity prompts; missing selections stop launch. |
+| Command input and completion | Native manager page | SDK suggestions, project paths, quoted arguments, and explicit execution without a shell. |
 | Build configuration, target framework, Project launch profile | Native | Output path comes from MSBuild evaluation. IIS Express profiles are omitted. |
 | C# completion, rename, code actions, navigation | Editor integration | Configure Roslyn LSP in Neovim. |
 | Local CoreCLR launch and attach | Optional | nvim-dap and netcoredbg; breakpoints/stack/step/watch use nvim-dap and its UI. |
@@ -20,4 +22,10 @@ This plugin targets local SDK-style C# projects. It delegates language intellige
 
 ## Platform validation
 
-The automated suite exercises command generation, workspace isolation, MSBuild metadata parsing, launch profiles, task handling, DAP registration, and Comet state. The local integration fixture was built on Linux using .NET SDK 10.0.112. Other operating systems and SDK versions require their own validation. Optional tools are checked with `:checkhealth dotnet-cli`.
+Run `just all` for hermetic behavior checks.
+Run `just test-integration` for native SDK, process, and restart checks.
+Run `just test-debug` for build, launch, breakpoint, attach, pause, and disconnect checks.
+These entry points run on Windows and Linux with isolated state and generated fixtures.
+The Linux integration fixture was built with .NET SDK 10.0.112.
+The debug fixture requires the .NET 10 SDK and netcoredbg 3.2.0-1092 or newer.
+Run `:checkhealth dotnet-cli` to inspect optional tools.
