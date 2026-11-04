@@ -2,10 +2,20 @@
 
 local M = {}
 
+---@class DotnetCliLaunchProfile
+---@field name string Profile name in launchSettings.json.
+---@field commandName string Always `Project`.
+---@field workingDirectory string Absolute working directory.
+---@field commandLineArgs? string
+---@field environmentVariables? table<string, string>
+---@field applicationUrl? string
+
 local function project_dir(project)
   return vim.fs.dirname(vim.fs.normalize(vim.fn.fnamemodify(project, ":p")))
 end
 
+---@param project string
+---@return DotnetCliLaunchProfile[]
 function M.profiles(project)
   local path =
     vim.fs.joinpath(project_dir(project), "Properties", "launchSettings.json")

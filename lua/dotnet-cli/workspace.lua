@@ -3,6 +3,15 @@
 local storage = require("dotnet-cli.state")
 local M = {}
 
+---@class DotnetCliWorkspaceContext
+---@field root string Absolute workspace root.
+---@field solution? string Absolute solution path.
+---@field project? string Absolute startup project path.
+---@field configuration string Build configuration, such as `Debug`.
+---@field tfm? string Selected target framework.
+---@field profile? string Selected launch profile name.
+---@field selection_error? string Why the saved selection could not load.
+
 local function absolute(path)
   path = path or vim.fn.getcwd()
   return vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))

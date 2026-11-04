@@ -3,6 +3,13 @@
 local job = require("dotnet-cli.job")
 local M = {}
 
+---@class DotnetCliMsbuildMetadata
+---@field TargetPath string Absolute output assembly, or empty for multi-target projects.
+---@field OutputType? string
+---@field TargetFramework? string
+---@field TargetFrameworks? string
+---@field IsTestProject boolean
+
 local function parse_json(lines)
   local text = table.concat(lines, "\n")
   local start = text:find("{")

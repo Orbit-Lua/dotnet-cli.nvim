@@ -15,7 +15,7 @@ commands; `lua/dotnet-cli/commands/` owns manager actions.
 | `.csproj`, `.sln`, `.slnx` discovery and selectors | `lua/dotnet-cli/project.lua` |
 | Selected root, project, solution, configuration, framework, profile | `lua/dotnet-cli/workspace.lua` |
 | Evaluated output metadata and Project launch profiles | `lua/dotnet-cli/msbuild.lua`, `lua/dotnet-cli/launch.lua` |
-| Optional nvim-dap/netcoredbg registration | `lua/dotnet-cli/dap.lua` |
+| Optional nvim-dap/netcoredbg registration | `lua/dotnet-cli/dap/` |
 | CLI output parsing and SDK cache | `lua/dotnet-cli/parsers.lua`, `lua/dotnet-cli/sdk.lua` |
 | Health checks | `lua/dotnet-cli/health.lua` |
 
