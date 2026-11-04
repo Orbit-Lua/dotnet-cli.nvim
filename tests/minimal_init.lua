@@ -16,6 +16,7 @@ for _, path in ipairs({
   plugins .. "/plenary.nvim",
   vim.env.DOTNET_TEST_COMET or (plugins .. "/comet.nvim"),
   plugins .. "/nvim-dap",
+  vim.env.DOTNET_TEST_TELEMETRY or (plugins .. "/telemetry.nvim"),
 }) do
   assert(vim.fn.isdirectory(path) == 1, "Missing test dependency: " .. path)
   vim.opt.runtimepath:append(path)

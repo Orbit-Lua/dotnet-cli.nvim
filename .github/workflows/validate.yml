@@ -17,7 +17,8 @@ env:
   NEOVIM_VERSION: v0.12.5
   STYLUA_VERSION: 2.4.0
   NETCOREDBG_VERSION: 3.2.0-1092
-  # Test dependency revisions match the OrbitVim lock file.
+  # Test dependency revisions match the OrbitVim lock file. The telemetry.nvim
+  # test reporter is the exception: it tracks its default branch.
   PLENARY_REVISION: 74b06c6c75e4eeb3108ec01852001636d85a932b
   COMET_REVISION: b30afe9e5fcd5445804e584eb1cadf68c64873fe
   NVIM_DAP_REVISION: 8aba1e3805438ee6f74207e0b7385ef951bb9945
@@ -75,7 +76,7 @@ jobs:
           tar -C "$RUNNER_TEMP" -xzf "$archive"
           echo "DOTNET_TEST_ADAPTER=$RUNNER_TEMP/netcoredbg/netcoredbg" >> "$GITHUB_ENV"
 
-      - name: Fetch pinned test plugins
+      - name: Fetch test plugins
         run: |
           plugins="$RUNNER_TEMP/plugins"
           fetch() {
@@ -86,6 +87,7 @@ jobs:
           fetch plenary.nvim nvim-lua/plenary.nvim "$PLENARY_REVISION"
           fetch comet.nvim Orbit-Lua/comet.nvim "$COMET_REVISION"
           fetch nvim-dap mfussenegger/nvim-dap "$NVIM_DAP_REVISION"
+          fetch telemetry.nvim Orbit-Lua/telemetry.nvim main
           echo "DOTNET_TEST_PLUGINS=$plugins" >> "$GITHUB_ENV"
 
       - name: Check Lua and run core specs
