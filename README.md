@@ -1,38 +1,23 @@
 # dotnet-cli.nvim
 
-[![Neovim 0.10+](https://img.shields.io/badge/Neovim-0.10%2B-57A143?style=flat-square&logo=neovim&logoColor=white)](https://neovim.io/)
-[![Lua plugin](https://img.shields.io/badge/Lua-plugin-2C2D72?style=flat-square&logo=lua&logoColor=white)](https://www.lua.org/)
-[![GPL-3.0 license](https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square)](LICENSE)
+Build, run, test and debug SDK-style .NET projects from a Neovim manager.
 
-`dotnet-cli.nvim` runs local SDK-style C# development workflows from Neovim. Its
-[Comet manager](https://github.com/Orbit-Lua/comet.nvim) lets you select a
-workspace project, build, run, test, manage packages, and create local artifacts
-without leaving the editor. Optional
-[nvim-dap](https://github.com/mfussenegger/nvim-dap) integration supplies .NET
-launch and attach configurations; your Neovim config can keep its own breakpoint
-keys and debug UI.
+[![Validate dotnet-cli.nvim](https://github.com/Orbit-Lua/dotnet-cli.nvim/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/Orbit-Lua/dotnet-cli.nvim/actions/workflows/validate.yml) [![Neovim](https://img.shields.io/badge/Neovim-0.11%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io/)
 
-The scope is local console, class library, and ASP.NET Core development. Legacy
-.NET Framework projects, Visual Studio designers, cloud deployment, and remote
-debugging are outside this plugin's scope. See the [capability
-guide](docs/capabilities.md) for provider requirements and support limits.
+The manager lets you select a startup project and run the `dotnet` workflows of local console, library and ASP.NET Core development. Optional [nvim-dap](https://github.com/mfussenegger/nvim-dap) integration builds the project and starts `netcoredbg`.
 
-## Requirements
+Legacy .NET Framework projects, Visual Studio designers, cloud deployment and remote debugging are out of scope. The [capability guide](docs/capabilities.md) lists each provider and limit.
 
-- Neovim **0.10 or newer** with Lua support.
-- A [.NET SDK](https://dotnet.microsoft.com/download) available as `dotnet` on
-  `PATH`.
+## Install
+
+Requirements:
+
+- Neovim 0.11 or later.
+- A [.NET SDK](https://dotnet.microsoft.com/download) as `dotnet` on `PATH`.
 - [comet.nvim](https://github.com/Orbit-Lua/comet.nvim) for `:DotnetManager`.
-- Optional: [nvim-dap](https://github.com/mfussenegger/nvim-dap) and
-  `netcoredbg` for `:DotnetDebug` and `:DotnetAttach`.
-  Use netcoredbg 3.2.0-1092 or newer for the validated .NET 10 workflow.
-- Optional: `dotnet-ef`, `dotnet-counters`, `dotnet-trace`, and `dotnet-dump`
-  for their matching actions. Global installations and local tool manifests are
-  supported.
-- Optional: `nvim-web-devicons` for project file icons. The manager has fallback
-  icons without it.
-
-## Quick start
+- Optional: [nvim-dap](https://github.com/mfussenegger/nvim-dap) and [netcoredbg](https://github.com/Samsung/netcoredbg) 3.2.0-1092 or later, for `:DotnetDebug` and `:DotnetAttach`.
+- Optional: `dotnet-ef`, `dotnet-counters`, `dotnet-trace` and `dotnet-dump` for their actions. A global install or a local tool manifest works.
+- Optional: [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons) for file icons. The manager has fallback icons.
 
 Install with [lazy.nvim](https://github.com/folke/lazy.nvim):
 
@@ -54,7 +39,9 @@ Install with [lazy.nvim](https://github.com/folke/lazy.nvim):
 }
 ```
 
-For a first run, open an existing SDK-style C# project, or create a small one:
+## Usage
+
+Open an SDK-style project, or create one:
 
 ```sh
 dotnet new console -n Demo
@@ -62,143 +49,131 @@ cd Demo
 nvim .
 ```
 
-Run `:DotnetManager`, choose **Workspace → Startup Project**, and select
-`Demo.csproj`. Then choose **Build** and **Debug**. The right panel shows the
-`dotnet build` output and a completion status. Project and solution lists show a
-scanning row immediately and update when discovery finishes; generated `bin` and
-`obj` directories are skipped.
+1. Run `:DotnetManager`.
+2. Select **Workspace → Startup Project**, then `Demo.csproj`.
+3. Select **Build**.
 
-## Everyday workflows
+The right panel shows the `dotnet build` output and its status. Project lists show a scanning row at once and skip `bin` and `obj`.
 
-| Manager area | What you can do |
+## Manager
+
+| Area | Actions |
 | --- | --- |
-| Workspace | Select a startup project, solution, build configuration, target framework, and supported `launchSettings.json` Project profile. Choices are kept per workspace root. |
-| Build and run | Build, run, watch run/test, restore, clean, and format. Interactive run and watch jobs accept line input from Comet's output panel. |
-| Test Explorer | Discover tests, run all or a named test, rerun the last failed named test, collect coverage, and send reported source locations to quickfix. VSTest and `global.json` selected Microsoft.Testing.Platform use different CLI options. Coverage requires the corresponding collector or extension. |
-| Packages and solutions | List direct, transitive, outdated, and vulnerable packages; add, update, or remove packages; edit central versions; create or use a lockfile; manage NuGet sources, projects, and solutions. |
-| Local tooling | List or restore local tools and workloads; run EF Core context and migration actions; manage user secrets and the HTTPS development certificate. Secret values are entered through a secret prompt and are not written to manager output. |
-| Diagnostics and delivery | Collect counters, traces, or dumps from a local process; pack a NuGet package; publish to a local output path with profile, runtime ID, self-contained, and single-file options; create an item from a template. |
+| Workspace | Select the startup project, solution, build configuration, target framework and `launchSettings.json` Project profile. Each workspace root keeps its selection. |
+| Build and run | Build, run, watch run or test, restore, clean and format. Interactive jobs accept line input in the output panel. |
+| Test Explorer | Discover tests, run all or one test, rerun the last failed test, collect coverage, and send source locations to quickfix. VSTest and Microsoft.Testing.Platform use different options. |
+| Packages and solutions | List direct, transitive, outdated and vulnerable packages. Add, update or remove packages, edit central versions, use a lockfile, and manage NuGet sources, projects and solutions. |
+| Local tooling | List or restore local tools and workloads, run EF Core actions, and manage user secrets and the HTTPS development certificate. Secret values never appear in the output. |
+| Diagnostics and delivery | Collect counters, traces or dumps from a local process. Pack a NuGet package, publish to a local path, or create an item from a template. |
 
-Comet stores output by workspace session. Focus the output panel and press `i`
-or `a` to send a line to an interactive job; press `<C-c>` to stop the current
-job. Diagnostic artifacts go under `artifacts/diagnostics` in the selected
-workspace. The separate **Publish** action retains the bundled `FolderProfile`
-behavior; **Pack & Publish** provides configurable local publishing.
+Comet keeps output per workspace session. In the output panel, press `i` or `a` to send a line to an interactive job. Press `<C-c>` to stop the current job.
 
-### Command input
+Diagnostic artifacts go to `artifacts/diagnostics` in the workspace. **Publish** uses the bundled `FolderProfile`; **Pack & Publish** can ask for each option.
 
-Open **Command Line** in the manager to type a `dotnet` command.
-Suggestions come from `dotnet complete` and workspace project discovery.
-Press Tab to accept a suggestion.
-Press Enter to run the command.
-Use `<C-c>` to stop the page's running task.
+### Command line
 
-The command page supports build, clean, restore, test, run, publish, pack, and
-format commands. SDK information and help options are also supported.
-Use the existing manager actions for EF, NuGet, secrets, and SDK extensions.
-Credential-bearing arguments are rejected before completion or execution.
-Command input is not echoed, saved, or interpreted by a shell.
+**Command Line** runs a typed `dotnet` command. Suggestions come from `dotnet complete` and project discovery.
 
-Quote paths containing spaces with single or double quotes.
-Single quotes preserve Windows backslashes literally.
-Double quotes use backslash escaping before a double quote.
-Empty quoted arguments are preserved.
-Shell expansion, pipes, and command chaining are not evaluated.
+- Press Tab to accept a suggestion.
+- Press Enter to run the command.
+- Press `<C-c>` to stop the running task.
 
-Build commands default to the captured project, configuration, and framework.
-Explicit command options take precedence.
-Run options are inserted before `--`, which separates application arguments.
-Reopen Command Line after changing the workspace selection.
+The page runs `build`, `clean`, `restore`, `test`, `run`, `publish`, `pack` and `format`, plus SDK information and help options. Use the manager actions for EF, NuGet, secrets and SDK extensions.
 
-### Direct commands
+The page rejects arguments that carry credentials, before completion and before execution. No shell runs the command, so expansion, pipes and chaining do not apply.
+
+- Quote a path with spaces in single or double quotes.
+- Single quotes keep Windows backslashes.
+- In double quotes, a backslash escapes a double quote.
+
+Commands default to the selected project, configuration and framework. An explicit option wins. Arguments after `--` go to the application. Reopen the page after you change the workspace selection.
+
+### Commands
 
 | Command | Purpose |
 | --- | --- |
 | `:DotnetManager` | Open the manager. |
-| `:DotnetBuild` | Choose and build a project. |
-| `:DotnetPublish` | Publish with the existing `FolderProfile` action. |
-| `:DotnetGlobalJson` | Create or update an SDK pin in `global.json`. |
-| `:DotnetDebug` | Build and debug the selected startup project. |
-| `:DotnetAttach` | Attach to a local process through nvim-dap. |
-| `:checkhealth dotnet-cli` | Inspect the SDK and optional providers. |
+| `:DotnetBuild` | Choose a project and build it. |
+| `:DotnetPublish` | Publish with the bundled `FolderProfile`. |
+| `:DotnetGlobalJson` | Create or update the SDK pin in `global.json`. |
+| `:DotnetDebug` | Build and debug the startup project. |
+| `:DotnetAttach` | Attach the debugger to a local process. |
+| `:checkhealth dotnet-cli` | Check the SDK and the optional providers. |
 
-## Debugging and configuration
+## Debugging
 
-Install nvim-dap and `netcoredbg`, then register the .NET adapter after nvim-dap
-loads:
+Register the adapter after nvim-dap loads:
 
 ```lua
-local dotnet = require("dotnet-cli")
-local ok, err = dotnet.setup_dap()
+local ok, err = require("dotnet-cli").setup_dap()
 if not ok then
   vim.notify(err, vim.log.levels.WARN)
 end
 ```
 
-If `netcoredbg` is outside `PATH`, call
-`setup_dap({ adapter_path = "/absolute/path/to/netcoredbg" })`.
-On Windows, the adapter uses a native executable instead of Mason's batch shim.
-It checks `PATH` and the Mason installation root.
-An explicit `adapter_path` takes precedence and must identify a native executable.
-Failed debug builds report their output without starting the adapter.
-Launched programs write their output to nvim-dap, such as the REPL, instead of
-a separate console window. They cannot read input in this mode. Set
-`dap.integrated_console = false` to run them in an external console that
-accepts input; on Windows it opens a new window.
-On Windows, the integrated console switches Neovim's console output code page
-to UTF-8 so non-ASCII output stays readable. The previous code page returns
-when the last .NET debug session ends or Neovim exits.
-Both `:DotnetDebug` and the registered `:DapNew` launch configuration resolve
-the startup project through the same workflow. An existing selection takes
-precedence. Without a selection, one runnable non-test project is selected
-automatically. Multiple applications open a picker. Libraries and test projects
-are not selected for debug launch.
+`setup_dap()` finds `netcoredbg` on `PATH`. On Windows, it also checks the Mason install and uses the native `netcoredbg.exe`, not Mason's batch shim. To use another executable, pass `setup_dap({ adapter_path = "/absolute/path/to/netcoredbg" })`.
 
-Select a project explicitly in the manager, or call
-`dotnet.workspace.select_project("/absolute/path/to/App.csproj")`.
-Selections survive editor restarts under `stdpath('state')/dotnet-cli/workspaces/`.
-Each workspace stores project, solution, configuration, framework, and profile
-identifiers. It stores no launch environment values. Missing selected projects
-stop launch until you select a replacement. Invalid state also requires
-reselection. A failed state write preserves the previous record and reports a
-warning. Concurrent updates to one workspace use the last successful write.
+`:DotnetDebug` and the `Dotnet: Launch selected project` configuration of `:DapNew` resolve the project in the same way:
 
-Debug launch uses the target path evaluated by MSBuild with the same build
-options. `OutputPath`, `OutDir`, and `output_dir_template` affect that path.
+1. The workspace selection wins.
+2. Without a selection, the only runnable non-test project is used.
+3. With more than one application, a picker opens.
+
+Libraries and test projects never launch. The launch uses the output path that MSBuild evaluates with the same options.
+
+A launch shows one notification, titled `Dotnet`, that moves through these phases:
+
+| Phase | Message |
+| --- | --- |
+| Resolve | `Resolving the startup project` |
+| Build | `Building <project>` |
+| Start | `Starting netcoredbg` |
+| Running | `Debugging <project>` |
+| Exit | `<project> exited with code <n>`, or `Debug session ended` |
+
+A failure ends the notification at its phase. A failed build shows the error count and up to ten compiler errors. With [nvim-notify](https://github.com/rcarriga/nvim-notify) or [snacks.nvim](https://github.com/folke/snacks.nvim), each phase replaces the message. Other notifiers show one message per phase.
+
+By default, nvim-dap shows the program output, and the program cannot read input. Set `dap.integrated_console = false` for an external console that accepts input. On Windows, the integrated console switches the console output to UTF-8 during a session.
+
+### Saved selection
+
+Selections persist under `stdpath("state")/dotnet-cli/workspaces/`. Each record keeps the project, solution, configuration, framework and profile, and no environment values. A missing project or an invalid record stops the launch until you select again. A failed write keeps the previous record.
+
+To select a project from Lua, call `require("dotnet-cli").workspace.select_project("/absolute/path/to/App.csproj")`.
+
+## Configuration
 
 `setup()` accepts these options:
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `roslyn_auto_insert` | `true` | Enable the Roslyn `/` auto-insert integration when Roslyn LSP attaches. |
-| `build_configurations` | `{ "Debug", "Release" }` | Choices shown for build configuration. |
-| `default_build_config` | `"Debug"` | Configuration for direct builds. |
-| `output_dir_template` | unset | Optional build output directory; `{config}` is replaced by the configuration. Leave unset for the SDK output layout used by MSBuild and the debugger. |
-| `nuget.allow_insecure_connections` | `false` | Allow insecure connections when adding a NuGet source. |
-| `dap.integrated_console` | `true` | Send launched debuggee output to nvim-dap. Set `false` for an external console with input. |
+| `roslyn_auto_insert` | `true` | Ask Roslyn for its `/` auto insert, such as a doc comment. |
+| `build_configurations` | `{ "Debug", "Release" }` | Configurations that the build picker shows. A list replaces the default list. |
+| `default_build_config` | `"Debug"` | Configuration of a direct build. |
+| `output_dir_template` | unset | Build output directory. `{config}` becomes the configuration. Unset keeps the SDK layout. |
+| `nuget.allow_insecure_connections` | `false` | Allow insecure connections when you add a NuGet source. |
+| `dap.integrated_console` | `true` | Show debuggee output in nvim-dap. `false` opens an external console with input. |
 
-The public `workspace`, `msbuild`, `launch`, `job`, `project`, `sdk`, and
-`parsers` modules are available through `require("dotnet-cli")` for other Neovim
-integrations.
+`setup()` raises an error for an unknown key or a wrong type, and names the option path:
 
-## Development
-
-From the repository root, install `just`, `stylua`, `luacheck`, and
-[plenary.nvim](https://github.com/nvim-lua/plenary.nvim), then run:
-
-```sh
-make all
+```text
+dap.integrated_consol: unknown option
 ```
 
-`just all` checks formatting, lints source, and runs hermetic core specs.
-`just test-integration` executes native process, SDK completion, and restart tests.
-`just test-debug` builds an isolated .NET 10 fixture and validates real debugging.
-Set `DOTNET_TEST_ADAPTER` to test a specific native debugger executable.
-Set `DOTNET_TEST_COMET` to test a local Comet checkout.
-`make all` retains formatting, lint, and complete suite execution.
-CI runs `just all`, `just test-integration`, and `just test-debug` on Linux.
-Run the same recipes locally on Windows before each push.
-Repository editing and test rules are in
-[AGENTS.md](AGENTS.md).
+`require("dotnet-cli")` also exports the `workspace`, `msbuild`, `launch`, `job`, `project`, `sdk` and `parsers` modules.
+
+## Ownership
+
+| Task | Owner |
+| --- | --- |
+| Manager windows, pickers and output panels | comet.nvim |
+| Project discovery, selection, builds and `dotnet` commands | dotnet-cli.nvim |
+| Debug sessions, breakpoints and debug UI | nvim-dap and your configuration |
+| Debug adapter protocol for CoreCLR | netcoredbg |
+| C# completion, navigation and code actions | Your Roslyn LSP configuration |
+
+## Contributing
+
+Read [AGENTS.md](AGENTS.md) for the development workflow and the checks.
 
 This project is licensed under [GPL-3.0](LICENSE).
