@@ -87,6 +87,17 @@ end
 ---@return string? err
 function M.setup(opts)
   opts = opts or {}
+  if type(opts) ~= "table" then
+    return false, "setup_dap options: expected table, got " .. type(opts)
+  end
+  for key, value in pairs(opts) do
+    if key ~= "adapter_path" then
+      return false, tostring(key) .. ": unknown option"
+    end
+    if type(value) ~= "string" then
+      return false, "adapter_path: expected string, got " .. type(value)
+    end
+  end
   local ok, dap = pcall(require, "dap")
   if not ok then
     return false, "nvim-dap is not installed"
