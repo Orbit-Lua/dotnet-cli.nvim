@@ -92,7 +92,8 @@ function M.build_summary(output)
   local lines, seen = {}, {}
   for _, item in ipairs(require("dotnet-cli.parsers").diagnostics(output)) do
     local line = ("%s(%d,%d): %s"):format(
-      vim.fn.fnamemodify(item.filename, ":t"),
+      -- Either separator: MSBuild output can name a path of another platform.
+      item.filename:match("[^/\\]+$") or item.filename,
       item.lnum,
       item.col,
       item.text
