@@ -73,6 +73,7 @@ local function persist(state)
   end
 end
 
+---@return DotnetCliWorkspaceContext copy of the active selection
 function M.current()
   if not active_root then
     local root, solution = discover_root(absolute(vim.fn.getcwd()))
@@ -81,12 +82,19 @@ function M.current()
   return copy(contexts[active_root])
 end
 
+---Make the workspace that contains `path` active.
+---@param path? string default the working directory
+---@return DotnetCliWorkspaceContext
 function M.activate(path)
   local root, solution = discover_root(absolute(path or vim.fn.getcwd()))
   active_root = context(root, solution)
   return M.current()
 end
 
+---Whether the active selection still equals `expected`.
+---@param expected DotnetCliWorkspaceContext
+---@param buffer? integer also require this buffer to be valid
+---@return boolean
 function M.matches(expected, buffer)
   if buffer and not vim.api.nvim_buf_is_valid(buffer) then
     return false
@@ -99,6 +107,9 @@ function M.matches(expected, buffer)
     and active.profile == expected.profile
 end
 
+---Change and save selection fields. A new project clears tfm and profile.
+---@param patch table<string, string?>
+---@return DotnetCliWorkspaceContext
 function M.set(patch)
   assert(type(patch) == "table", "workspace.set expects a table")
   local current = M.current()
@@ -121,6 +132,10 @@ function M.set(patch)
   return M.current()
 end
 
+---Select a startup project and its workspace root.
+---@param project string
+---@param opts? { root?: string, configuration?: string, tfm?: string, profile?: string }
+---@return DotnetCliWorkspaceContext
 function M.select_project(project, opts)
   opts = opts or {}
   local full_path = absolute(project)
@@ -136,6 +151,8 @@ function M.select_project(project, opts)
   return M.set(patch)
 end
 
+---Drop every in-memory selection (tests only).
+---@return DotnetCliWorkspaceContext
 function M.reset()
   contexts = {}
   active_root = nil

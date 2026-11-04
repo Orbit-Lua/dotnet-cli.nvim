@@ -42,7 +42,7 @@ M.spec_list_runtimes = {
   end,
 }
 
----@param c table Comet context
+---@param c CometCtx
 ---@param existing string
 ---@param version string
 local function update_global_json(c, existing, version)
@@ -56,7 +56,7 @@ local function update_global_json(c, existing, version)
   )
 end
 
----@param c table Comet context
+---@param c CometCtx
 ---@param version string
 local function create_global_json(c, version)
   local cmd = "dotnet new globaljson --sdk-version " .. version

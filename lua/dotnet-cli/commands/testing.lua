@@ -7,6 +7,7 @@ local workspace = require("dotnet-cli.workspace")
 local M = {}
 
 local last_failed = {}
+---@type table<string, DotnetCliTestCapabilities>
 local capability_cache = {}
 
 local function absolute(path)
@@ -62,6 +63,24 @@ local function runner_from_global(path)
   return "vstest"
 end
 
+---@class DotnetCliTestOptions
+---@field root? string workspace root
+---@field runner? "vstest"|"mtp"
+---@field sdk_major? integer
+---@field configuration? string
+---@field tfm? string
+---@field filter? string FullyQualifiedName fragment for `selected`
+---@field results_dir? string
+---@field trx_filename? string
+---@field capabilities? DotnetCliTestCapabilities
+
+---@class DotnetCliTestCapabilities
+---@field runner "vstest"|"mtp"
+---@field discover boolean
+---@field filter boolean
+---@field coverage boolean
+---@field trx boolean
+
 ---Resolve the active test runner using the nearest global.json setting.
 ---@param root string
 ---@return "vstest"|"mtp"|nil runner
@@ -101,7 +120,7 @@ end
 ---@param mtp_args string[]
 ---@param runner string vstest|mtp
 ---@param mode string
----@param opts table
+---@param opts DotnetCliTestOptions
 local function result_arguments(cmd, mtp_args, runner, mode, opts)
   if not opts.results_dir then
     return
@@ -121,7 +140,7 @@ end
 ---Build a `dotnet test` command for the selected runner and operation.
 ---@param project string
 ---@param mode string all|discover|selected|coverage
----@param opts table?
+---@param opts? DotnetCliTestOptions
 ---@return string[] command
 M.command = function(project, mode, opts)
   opts = opts or {}
@@ -154,13 +173,22 @@ M.command = function(project, mode, opts)
   return cmd
 end
 
+---Read runner features from `dotnet test --help`, cached per project.
+---@param project string
+---@param root string
+---@param runner "vstest"|"mtp"
+---@param major? integer
+---@return DotnetCliTestCapabilities? capabilities
+---@return string? err
 local function help_capabilities(project, root, runner, major)
   local key = table.concat(
     { absolute(root), absolute(project), runner, tostring(major) },
     "\0"
   )
-  if capability_cache[key] then
-    return vim.deepcopy(capability_cache[key])
+  local cached = capability_cache[key]
+  if cached then
+    local copy = vim.deepcopy(cached)
+    return copy
   end
   local cmd = { "dotnet", "test" }
   if runner == "mtp" and major and major >= 10 then
@@ -208,8 +236,8 @@ end
 
 ---Return runner features advertised by this project's `dotnet test --help`.
 ---@param project string
----@param opts table?
----@return table? capabilities
+---@param opts? DotnetCliTestOptions
+---@return DotnetCliTestCapabilities? capabilities
 ---@return string? error
 M.capabilities = function(project, opts)
   opts = opts or {}
@@ -240,6 +268,7 @@ M.capabilities = function(project, opts)
   return help_capabilities(project, root, runner, major)
 end
 
+---Forget cached runner capabilities (tests only).
 M._reset_capabilities = function()
   capability_cache = {}
 end

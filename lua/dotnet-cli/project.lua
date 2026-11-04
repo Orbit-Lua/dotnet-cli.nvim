@@ -81,7 +81,7 @@ local function find_files_async(root, extensions, callback)
       vim.schedule(function()
         if err or not request then
           if is_root then
-            root_error = err or "could not scan " .. dir
+            root_error = err or ("could not scan " .. dir)
           end
           completed()
           return
@@ -115,10 +115,16 @@ local function find_files_async(root, extensions, callback)
   scan(root, true)
 end
 
+---Find `.csproj` files under `root`, skipping generated directories.
+---@param root string
+---@param callback fun(files: string[], err?: string) paths relative to root
 M.get_csproj_files_async = function(root, callback)
   find_files_async(root, { csproj = true }, callback)
 end
 
+---Find `.sln` and `.slnx` files under `root`.
+---@param root string
+---@param callback fun(files: string[], err?: string) paths relative to root
 M.get_sln_files_async = function(root, callback)
   find_files_async(root, { sln = true, slnx = true }, callback)
 end

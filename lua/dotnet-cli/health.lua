@@ -3,22 +3,7 @@
 
 local M = {}
 
-M.check = function()
-  vim.health.start("dotnet-cli.nvim")
-
-  -- Check dotnet CLI
-  if vim.fn.executable("dotnet") == 1 then
-    local version = vim.fn.system("dotnet --version")
-    vim.health.ok("dotnet CLI found: " .. vim.trim(version))
-  else
-    vim.health.error(
-      "dotnet CLI not found",
-      { "Install .NET SDK: https://dot.net/download" }
-    )
-    return
-  end
-
-  -- Check SDKs installed
+local function check_sdks()
   local sdk_lines = vim.fn.systemlist("dotnet --list-sdks")
   if vim.v.shell_error == 0 and #sdk_lines > 0 then
     vim.health.ok(#sdk_lines .. " SDK(s) installed")
@@ -29,44 +14,39 @@ M.check = function()
     vim.health.warn("No .NET SDKs found")
   end
 
-  -- Check runtimes
   local rt_lines = vim.fn.systemlist("dotnet --list-runtimes")
   if vim.v.shell_error == 0 and #rt_lines > 0 then
     vim.health.ok(#rt_lines .. " runtime(s) installed")
   else
     vim.health.warn("No .NET runtimes found")
   end
+end
 
-  -- Check global.json
-  if vim.fn.filereadable("global.json") == 1 then
-    local ok, data =
-      pcall(vim.json.decode, table.concat(vim.fn.readfile("global.json"), "\n"))
-    if ok and data and data.sdk and data.sdk.version then
-      vim.health.ok("global.json pins SDK " .. data.sdk.version)
-    else
-      vim.health.info("global.json exists but no SDK version pinned")
-    end
-  else
+local function check_global_json()
+  if vim.fn.filereadable("global.json") ~= 1 then
     vim.health.info("No global.json in current directory")
+    return
   end
+  local version = require("dotnet-cli.sdk").global_json_version()
+  if version then
+    vim.health.ok("global.json pins SDK " .. version)
+  else
+    vim.health.info("global.json exists but no SDK version pinned")
+  end
+end
 
-  -- Check optional dependencies
-  local has_devicons = pcall(require, "nvim-web-devicons")
-  if has_devicons then
+local function check_plugins()
+  if pcall(require, "nvim-web-devicons") then
     vim.health.ok("nvim-web-devicons available (file icons)")
   else
     vim.health.info("nvim-web-devicons not found (icons will use fallback)")
   end
-
-  local has_comet = pcall(require, "comet")
-  if has_comet then
+  if pcall(require, "comet") then
     vim.health.ok("comet.nvim available (manager UI)")
   else
     vim.health.warn("comet.nvim not found; install it for DotnetManager")
   end
-
-  local has_dap = pcall(require, "dap")
-  if has_dap then
+  if pcall(require, "dap") then
     vim.health.ok("nvim-dap available")
   else
     vim.health.info("nvim-dap not found; .NET debugging is unavailable")
@@ -76,7 +56,9 @@ M.check = function()
   else
     vim.health.info("netcoredbg not found; set adapter_path for .NET debugging")
   end
+end
 
+local function check_tools()
   for _, tool in ipairs({
     "dotnet-ef",
     "dotnet-counters",
@@ -91,6 +73,24 @@ M.check = function()
       )
     end
   end
+end
+
+---Run `:checkhealth dotnet-cli`.
+M.check = function()
+  vim.health.start("dotnet-cli.nvim")
+  if vim.fn.executable("dotnet") ~= 1 then
+    vim.health.error(
+      "dotnet CLI not found",
+      { "Install .NET SDK: https://dot.net/download" }
+    )
+    return
+  end
+  local version = vim.fn.system("dotnet --version")
+  vim.health.ok("dotnet CLI found: " .. vim.trim(version))
+  check_sdks()
+  check_global_json()
+  check_plugins()
+  check_tools()
 end
 
 return M

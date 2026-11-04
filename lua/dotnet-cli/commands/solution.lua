@@ -24,7 +24,7 @@ local function list_projects(c)
 end
 
 ---Show a scanning row at once, then replace it with the found projects.
----@param c table Comet context
+---@param c CometCtx
 local function show_csproj_files(c)
   project.get_csproj_files_async(vim.fn.getcwd(), function(files)
     local items = {}

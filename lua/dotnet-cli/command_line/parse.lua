@@ -56,7 +56,7 @@ end
 ---@param text string
 ---@param partial? boolean accept an open quote while the user types
 ---@return string[]? values
----@return DotnetCliToken[]|string tokens, or the error without `partial`
+---@return DotnetCliToken[]|string tokens the error message when values is nil
 function M.parse(text, partial)
   local values, tokens = {}, {}
   local value, quote, first, started = "", nil, nil, false

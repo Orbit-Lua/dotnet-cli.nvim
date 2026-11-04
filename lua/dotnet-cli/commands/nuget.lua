@@ -33,7 +33,7 @@ end
 ---Run one NuGet source action for each selected source and report a summary.
 ---@param action "remove"|"enable"|"disable"
 ---@param selected { _raw: string }[]
----@param c table Comet context
+---@param c CometCtx
 local function run_for_sources(action, selected, c)
   local failed = 0
   c:clear()
@@ -62,7 +62,7 @@ end
 
 ---Pick sources, then run a remove, enable or disable action on them.
 ---@param action "remove"|"enable"|"disable"
----@param c table Comet context
+---@param c CometCtx
 local function change_sources(action, c)
   c:clear()
   local raw, ok = job.run_sync({ "dotnet", "nuget", "list", "source" })

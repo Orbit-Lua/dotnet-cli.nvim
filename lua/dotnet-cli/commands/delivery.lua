@@ -3,6 +3,9 @@ local workspace = require("dotnet-cli.workspace")
 
 local M = {}
 
+---@param project string
+---@param options? { configuration?: string, output?: string }
+---@return string[]
 M.pack_cmd = function(project, options)
   options = options or {}
   local cmd = { "dotnet", "pack", project }
@@ -15,6 +18,17 @@ M.pack_cmd = function(project, options)
   return cmd
 end
 
+---@class DotnetCliPublishOptions
+---@field configuration? string
+---@field profile? string publish profile name or path
+---@field runtime? string runtime identifier
+---@field self_contained? boolean
+---@field single_file? boolean
+---@field output? string
+
+---@param project string
+---@param options? DotnetCliPublishOptions
+---@return string[]
 M.publish_cmd = function(project, options)
   options = options or {}
   local cmd = { "dotnet", "publish", project }
@@ -40,6 +54,10 @@ M.publish_cmd = function(project, options)
   return cmd
 end
 
+---@param template string item template short name
+---@param name string
+---@param output string
+---@return string[]
 M.item_cmd = function(template, name, output)
   return { "dotnet", "new", template, "--name", name, "--output", output }
 end

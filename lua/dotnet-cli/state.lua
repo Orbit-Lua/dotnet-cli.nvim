@@ -2,6 +2,9 @@
 local M = {}
 local fields = { "project", "solution", "configuration", "tfm", "profile" }
 
+---Normalize a root for comparison; Windows paths compare without case.
+---@param root string
+---@return string
 function M.identity(root)
   local path = vim.fs.normalize(vim.uv.fs_realpath(root) or root)
   return vim.fn.has("win32") == 1 and path:lower() or path
@@ -16,6 +19,10 @@ local function location(root)
   )
 end
 
+---Read the saved selection of a workspace root.
+---@param root string
+---@return table<string, string>? selection empty when nothing is saved
+---@return string? err when the saved record is invalid
 function M.load(root)
   local path = location(root)
   if not vim.uv.fs_stat(path) then
@@ -51,6 +58,10 @@ function M.load(root)
   return result
 end
 
+---Replace the saved selection atomically.
+---@param selection DotnetCliWorkspaceContext
+---@return boolean ok
+---@return string? err
 function M.save(selection)
   local path = location(selection.root)
   local record = {}

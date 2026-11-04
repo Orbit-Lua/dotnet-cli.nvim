@@ -3,6 +3,10 @@ local sdk = require("dotnet-cli.sdk")
 
 local M = {}
 
+---@param project string
+---@param kind? "outdated"|"vulnerable"|"transitive"
+---@param major? integer SDK major version
+---@return string[]
 M.list_cmd = function(project, kind, major)
   major = major or sdk.get_major() or 0
   local cmd
@@ -21,6 +25,10 @@ M.list_cmd = function(project, kind, major)
   return cmd
 end
 
+---@param project string
+---@param package string
+---@param version? string
+---@return string[]
 M.add_cmd = function(project, package, version)
   local cmd = { "dotnet", "add", project, "package", package }
   if version and version ~= "" then
@@ -29,10 +37,16 @@ M.add_cmd = function(project, package, version)
   return cmd
 end
 
+---@param project string
+---@param package string
+---@return string[]
 M.remove_cmd = function(project, package)
   return { "dotnet", "remove", project, "package", package }
 end
 
+---@param project string
+---@param mode? "locked"|"generate"
+---@return string[]
 M.restore_cmd = function(project, mode)
   local cmd = { "dotnet", "restore", project }
   if mode == "locked" then

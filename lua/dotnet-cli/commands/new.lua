@@ -8,7 +8,7 @@ local M = {}
 
 ---Offer a publish profile from the bundled template after a new project.
 ---@param name string project directory
----@param c table Comet context
+---@param c CometCtx
 local function offer_publish_profile(name, c)
   vim.schedule(function()
     vim.ui.select({ "Yes", "No" }, {
@@ -24,7 +24,7 @@ local function offer_publish_profile(name, c)
 end
 
 ---@param template { short_name: string }
----@param c table Comet context
+---@param c CometCtx
 local function create_project(template, c)
   vim.cmd("stopinsert")
   vim.ui.input({ prompt = "Project name: " }, function(name)

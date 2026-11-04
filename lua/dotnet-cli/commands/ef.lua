@@ -3,6 +3,11 @@ local workspace = require("dotnet-cli.workspace")
 
 local M = {}
 
+---@param action string[] such as `{ "migrations", "add" }`
+---@param project string
+---@param startup string startup project
+---@param name? string migration name
+---@return string[]
 M.command = function(action, project, startup, name)
   local cmd = { "dotnet", "ef" }
   vim.list_extend(cmd, action)

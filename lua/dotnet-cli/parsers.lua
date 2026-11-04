@@ -86,6 +86,9 @@ M.sdk_versions = function(lines)
   return versions
 end
 
+---Read the first number in process output as a PID.
+---@param output? string
+---@return integer?
 M.first_pid = function(output)
   if type(output) ~= "string" then
     return nil
@@ -101,7 +104,7 @@ end
 
 ---Read compiler diagnostics from MSBuild output.
 ---@param lines string[]
----@return table[]
+---@return vim.quickfix.entry[]
 M.diagnostics = function(lines)
   local result = {}
   for _, line in ipairs(lines) do
@@ -127,7 +130,7 @@ end
 
 ---Extract source locations from .NET test stack traces.
 ---@param lines string[]
----@return table[]
+---@return vim.quickfix.entry[]
 M.stack_locations = function(lines)
   local result = {}
   local seen = {}

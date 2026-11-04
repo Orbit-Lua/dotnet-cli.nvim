@@ -3,6 +3,9 @@ local job = require("dotnet-cli.job")
 
 local M = {}
 
+---List user-secret keys; values never leave the CLI output.
+---@param project string
+---@return string[]? keys nil when the CLI fails
 M.list_keys = function(project)
   local lines, ok =
     job.run_sync({ "dotnet", "user-secrets", "list", "--project", project })
@@ -19,6 +22,11 @@ M.list_keys = function(project)
   return keys
 end
 
+---Set a user secret through stdin, so the value is not in the argv.
+---@param project string
+---@param key string
+---@param value string
+---@param ctx CometCtx
 M.set = function(project, key, value, ctx)
   ctx:clear()
   ctx:append("Setting user secret: " .. key)

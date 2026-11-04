@@ -26,16 +26,68 @@ M.workspace = require("dotnet-cli.workspace")
 M.msbuild = require("dotnet-cli.msbuild")
 M.launch = require("dotnet-cli.launch")
 
+---Register the coreclr debug adapter with nvim-dap.
+---@param opts? DotnetCliDapOptions
+---@return boolean ok
+---@return string? err
 M.setup_dap = function(opts)
   return require("dotnet-cli.dap").setup(opts)
 end
 
+---Ask Roslyn for its auto insert after a typed '/', such as a doc comment.
+---@param client vim.lsp.Client
+---@param bufnr integer
+local function request_auto_insert(client, bufnr)
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  local params = {
+    _vs_textDocument = { uri = vim.uri_from_bufnr(bufnr) },
+    _vs_position = { line = row - 1, character = col + 1 },
+    _vs_ch = "/",
+    _vs_options = {
+      tabSize = vim.bo[bufnr].tabstop,
+      insertSpaces = vim.bo[bufnr].expandtab,
+    },
+  }
+  vim.defer_fn(function()
+    client:request(
+      ---@diagnostic disable-next-line: param-type-mismatch
+      "textDocument/_vs_onAutoInsert",
+      params,
+      function(err, result, _)
+        if err or not result then
+          return
+        end
+        vim.snippet.expand(result._vs_textEdit.newText)
+      end,
+      bufnr
+    )
+  end, 1)
+end
+
+---@param args { buf: integer, data: { client_id: integer } }
+local function attach_roslyn(args)
+  local client = vim.lsp.get_client_by_id(args.data.client_id)
+  if not client or (client.name ~= "roslyn" and client.name ~= "roslyn_ls") then
+    return
+  end
+  local bufnr = args.buf
+  vim.api.nvim_create_autocmd("InsertCharPre", {
+    desc = "Roslyn: Trigger an auto insert on '/'.",
+    buffer = bufnr,
+    callback = function()
+      if vim.v.char == "/" then
+        request_auto_insert(client, bufnr)
+      end
+    end,
+  })
+end
+
+---Validate options, then register commands and autocommands.
 ---@param opts? DotnetCliConfig
 M.setup = function(opts)
   local config = require("dotnet-cli.config")
   config.setup(opts)
 
-  local cfg = config.get()
   vim.api.nvim_create_autocmd("DirChanged", {
     group = vim.api.nvim_create_augroup("DotnetCliWorkspace", { clear = true }),
     callback = function()
@@ -44,59 +96,10 @@ M.setup = function(opts)
   })
   require("dotnet-cli.commands.register").setup(M.title)
 
-  -- ── Roslyn auto-insert ────────────────────────────────────────────────────
-
-  if cfg.roslyn_auto_insert then
+  if config.get().roslyn_auto_insert then
     vim.api.nvim_create_autocmd("LspAttach", {
       group = vim.api.nvim_create_augroup("DotnetCliRoslyn", { clear = true }),
-      callback = function(args)
-        local client = vim.lsp.get_client_by_id(args.data.client_id)
-        local bufnr = args.buf
-
-        if
-          client and (client.name == "roslyn" or client.name == "roslyn_ls")
-        then
-          vim.api.nvim_create_autocmd("InsertCharPre", {
-            desc = "Roslyn: Trigger an auto insert on '/'.",
-            buffer = bufnr,
-            callback = function()
-              local char = vim.v.char
-              if char ~= "/" then
-                return
-              end
-
-              local row, col = unpack(vim.api.nvim_win_get_cursor(0))
-              row, col = row - 1, col + 1
-              local uri = vim.uri_from_bufnr(bufnr)
-
-              local params = {
-                _vs_textDocument = { uri = uri },
-                _vs_position = { line = row, character = col },
-                _vs_ch = char,
-                _vs_options = {
-                  tabSize = vim.bo[bufnr].tabstop,
-                  insertSpaces = vim.bo[bufnr].expandtab,
-                },
-              }
-
-              vim.defer_fn(function()
-                client:request(
-                  ---@diagnostic disable-next-line: param-type-mismatch
-                  "textDocument/_vs_onAutoInsert",
-                  params,
-                  function(err, result, _)
-                    if err or not result then
-                      return
-                    end
-                    vim.snippet.expand(result._vs_textEdit.newText)
-                  end,
-                  bufnr
-                )
-              end, 1)
-            end,
-          })
-        end
-      end,
+      callback = attach_roslyn,
     })
   end
 end

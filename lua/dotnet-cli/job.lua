@@ -11,7 +11,16 @@ local M = {}
 ---@field env table<string, string>? environment overrides
 ---@field clear_env boolean? start without inherited environment
 ---@field interactive boolean? allocate a PTY for stdin/stdout interaction
+---@field stdin string? text sent to the process after it starts
+---@field echo boolean? print the command before its output (default: true)
+---@field stdout_buffered boolean?
+---@field stderr_buffered boolean?
+---@field on_stdout fun(id: integer, data: string[], event: string)?
+---@field on_stderr fun(id: integer, data: string[], event: string)?
 ---@field on_exit fun(code: integer, event: string, ctx: CometCtx?, job_id: integer)?
+
+---@class JobSpec: JobOpts
+---@field argv string[] command line; `argv[1]` is the executable
 
 local function emit(ctx, method, ...)
   if ctx and type(ctx[method]) == "function" then
@@ -28,7 +37,7 @@ local function normalize_lines(data)
 end
 
 ---Start a structured process specification.
----@param spec table { argv: string[], cwd?, env?, interactive?, on_exit? }
+---@param spec JobSpec
 ---@param ctx? CometCtx
 ---@return integer job_id
 M.start = function(spec, ctx)
@@ -70,16 +79,45 @@ M.start = function(spec, ctx)
   return id
 end
 
----Run a shell command, streaming stdout/stderr into the UI output panel.
+---Report a finished run in its Comet context, then call the callbacks.
+---@param opts JobOpts
+---@param on_complete? fun(ctx: CometCtx)
+---@return fun(code: integer, event: string, job_ctx?: CometCtx, id: integer)
+local function exit_reporter(opts, on_complete)
+  return function(code, event, job_ctx, id)
+    emit(job_ctx, "append", "")
+    if code == 0 then
+      emit(job_ctx, "append", "✓  Completed successfully")
+      if on_complete then
+        vim.schedule(function()
+          on_complete(job_ctx)
+        end)
+      end
+    else
+      emit(job_ctx, "append", "✗  Failed  (exit code " .. code .. ")")
+      emit(job_ctx, "error", id)
+    end
+    if opts.on_exit then
+      opts.on_exit(code, event, job_ctx, id)
+    end
+    if code == 0 then
+      vim.schedule(function()
+        emit(job_ctx, "done", id)
+      end)
+    end
+  end
+end
+
+---Run a command, streaming stdout/stderr into the UI output panel.
 ---@param cmd string[]
----@param ctx CometCtx
+---@param ctx? CometCtx
 ---@param on_complete? fun(ctx: CometCtx) called on exit-code 0
 ---@param opts? JobOpts
 ---@return number job_id
 M.run = function(cmd, ctx, on_complete, opts)
   -- Also accept run(cmd, opts) for callers that do not use the Comet UI.
   if ctx and type(ctx) == "table" and not ctx.append and on_complete == nil then
-    opts = ctx
+    opts = ctx --[[@as JobOpts]]
     ctx = nil
   end
   opts = vim.tbl_deep_extend("force", {
@@ -106,28 +144,7 @@ M.run = function(cmd, ctx, on_complete, opts)
     stderr_buffered = opts.stderr_buffered,
     on_stdout = opts.on_stdout,
     on_stderr = opts.on_stderr,
-    on_exit = function(code, event, job_ctx, id)
-      emit(job_ctx, "append", "")
-      if code == 0 then
-        emit(job_ctx, "append", "✓  Completed successfully")
-        if on_complete then
-          vim.schedule(function()
-            on_complete(job_ctx)
-          end)
-        end
-      else
-        emit(job_ctx, "append", "✗  Failed  (exit code " .. code .. ")")
-        emit(job_ctx, "error", id)
-      end
-      if opts.on_exit then
-        opts.on_exit(code, event, job_ctx, id)
-      end
-      if code == 0 then
-        vim.schedule(function()
-          emit(job_ctx, "done", id)
-        end)
-      end
-    end,
+    on_exit = exit_reporter(opts, on_complete),
   }, ctx)
   if id > 0 then
     emit(ctx, "start_async_task", id)

@@ -315,7 +315,7 @@ local function add_selection(argv, context)
   end
 end
 
----@param ctx table Comet context
+---@param ctx CometCtx
 ---@param message string
 local function reject(ctx, message)
   ctx:append(message)
@@ -325,7 +325,7 @@ end
 ---Run a typed command in the selected workspace.
 ---@param context DotnetCliWorkspaceContext
 ---@param text string
----@param ctx table Comet context
+---@param ctx CometCtx
 function M.submit(context, text, ctx)
   local argv, err = parse.parse(text)
   if not argv then

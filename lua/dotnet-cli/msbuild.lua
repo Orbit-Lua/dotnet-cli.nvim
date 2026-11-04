@@ -75,6 +75,13 @@ local function metadata(project, lines)
   }
 end
 
+---Query evaluated metadata and wait for it.
+---@param project string
+---@param configuration? string
+---@param tfm? string
+---@param root? string
+---@return DotnetCliMsbuildMetadata? metadata
+---@return string? err
 function M.get(project, configuration, tfm, root)
   local lines, ok = job.run_sync(command(project, configuration, tfm, root), {
     cwd = root or vim.fs.dirname(vim.fn.fnamemodify(project, ":p")),
@@ -86,6 +93,12 @@ function M.get(project, configuration, tfm, root)
   return metadata(project, lines)
 end
 
+---Query evaluated metadata without blocking.
+---@param project string
+---@param configuration? string
+---@param tfm? string
+---@param root? string
+---@param callback fun(metadata?: DotnetCliMsbuildMetadata, err?: string)
 function M.get_async(project, configuration, tfm, root, callback)
   local output = {}
   local function collect(_, lines)

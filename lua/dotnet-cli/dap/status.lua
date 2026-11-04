@@ -114,7 +114,7 @@ function M.build_summary(output)
   return header .. "\n" .. table.concat(vim.list_slice(lines, 1, 10), "\n")
 end
 
----@param session? table nvim-dap session
+---@param session? dap.Session
 ---@return DotnetCliDapStatus?
 local function of_session(session)
   return session and session.config and M.get(session.config.dotnet_status)
@@ -122,8 +122,8 @@ end
 
 ---Bind a new session to its status, and finish the status of a session that
 ---closed without an exit event. Called from the `on_session` listener.
----@param old? table
----@param new? table
+---@param old? dap.Session
+---@param new? dap.Session
 function M.on_session(old, new)
   local bound = of_session(new)
   if bound then
@@ -135,8 +135,8 @@ function M.on_session(old, new)
   end
 end
 
----@param session table
----@param err? table
+---@param session dap.Session
+---@param err? dap.ErrorResponse
 local function on_launch(session, err)
   local status = of_session(session)
   if not status then
@@ -149,7 +149,7 @@ local function on_launch(session, err)
   status:report("running", "Debugging " .. (status.name or "the program"))
 end
 
----@param session table
+---@param session dap.Session
 ---@param body { exitCode: integer }
 local function on_exited(session, body)
   local status = of_session(session)

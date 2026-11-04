@@ -1,6 +1,10 @@
 local config = require("dotnet-cli.config")
 local M = {}
 
+---Resolve `output_dir_template` for a configuration, relative to `root`.
+---@param configuration? string default `default_build_config`
+---@param root? string default the working directory
+---@return string? path nil without a template
 function M.output(configuration, root)
   local template = config.get().output_dir_template
   if not template then
@@ -16,6 +20,12 @@ function M.output(configuration, root)
   return vim.fs.normalize(path)
 end
 
+---Build a `dotnet build` command.
+---@param project? string
+---@param configuration? string
+---@param tfm? string
+---@param root? string
+---@return string[]
 function M.argv(project, configuration, tfm, root)
   configuration = configuration or config.get().default_build_config
   local argv = { "dotnet", "build" }

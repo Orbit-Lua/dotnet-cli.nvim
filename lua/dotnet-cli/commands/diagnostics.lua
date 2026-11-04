@@ -31,6 +31,11 @@ local function local_tool(root, command)
   return false
 end
 
+---Build a diagnostic tool command from PATH or the local tool manifest.
+---@param tool string key of a known tool, such as `counters`
+---@param root string
+---@param args? string[]
+---@return string[]? cmd nil when the tool is not installed
 M.tool_cmd = function(tool, root, args)
   local info = tools[tool]
   assert(info, "unknown .NET diagnostic tool: " .. tostring(tool))
@@ -46,6 +51,10 @@ M.tool_cmd = function(tool, root, args)
   return cmd
 end
 
+---@param tool string
+---@param pid integer|string
+---@param output string
+---@return string[]
 M.get_args = function(tool, pid, output)
   assert(tools[tool], "unknown .NET diagnostic tool: " .. tostring(tool))
   local cmd = { "collect", "--process-id", tostring(pid) }
@@ -85,7 +94,9 @@ local function run_tool(tool, ctx)
       return
     end
     local path = default_output(state.root, info)
-    local full_cmd = M.tool_cmd(tool, state.root, M.get_args(tool, pid, path))
+    -- run_tool checked that the tool is available.
+    local full_cmd = M.tool_cmd(tool, state.root, M.get_args(tool, pid, path)) --[=[@as string[]]=]
+
     ctx:append("Artifact: " .. path)
     common.run(
       ctx,
