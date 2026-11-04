@@ -96,6 +96,68 @@ local function choose_framework(ctx)
   end, "󰅩 ")
 end
 
+local function select_startup_project(child)
+  select_paths_async(
+    child,
+    project.get_csproj_files_async,
+    "Startup Project",
+    function(path, c, captured)
+      local chosen = workspace.select_project(path, { root = captured.root })
+      c:clear()
+      c:append("Startup project: " .. chosen.project)
+    end,
+    project.get_file_icon("App.csproj")
+  )
+end
+
+local function select_solution(child)
+  select_paths_async(
+    child,
+    project.get_sln_files_async,
+    "Solution",
+    function(path, c)
+      workspace.set({ solution = path })
+      c:clear()
+      c:append("Solution: " .. workspace.current().solution)
+    end,
+    "󰨞 "
+  )
+end
+
+local function select_configuration(child)
+  local configs = require("dotnet-cli.config").get().build_configurations
+  select_paths(child, configs, "Configuration", function(name, c)
+    workspace.set({ configuration = name })
+    c:clear()
+    c:append("Configuration: " .. name)
+  end, "󰒓 ")
+end
+
+local function select_profile(child)
+  local selected = workspace.current().project
+  if not selected then
+    child:append("Select a startup project first")
+    return
+  end
+  local names = {}
+  for _, profile in ipairs(launch.profiles(selected)) do
+    names[#names + 1] = profile.name
+  end
+  select_paths(child, names, "Launch Profile", function(name, c)
+    workspace.set({ profile = name })
+    c:clear()
+    c:append("Launch profile: " .. name)
+  end, " ")
+end
+
+local handlers = {
+  project = select_startup_project,
+  solution = select_solution,
+  configuration = select_configuration,
+  framework = choose_framework,
+  profile = select_profile,
+}
+
 M.spec = {
   name = "Workspace",
   icon = "󰈚 ",
@@ -112,69 +174,21 @@ M.spec = {
       { name = "Solution", _raw = "solution", icon = "󰨞 " },
       { name = "Configuration", _raw = "configuration", icon = "󰒓 " },
       { name = "Target Framework", _raw = "framework", icon = "󰅩 " },
-      { name = "Launch Profile", _raw = "profile", icon = " " },
+      { name = "Launch Profile", _raw = "profile", icon = " " },
     }, {
       title = "Workspace Action",
       on_select = function(item, child)
+        local state = require("dotnet-cli.state")
         if
-          require("dotnet-cli.state").identity(workspace.current().root)
-          ~= require("dotnet-cli.state").identity(current.root)
+          state.identity(workspace.current().root)
+          ~= state.identity(current.root)
         then
           child:append("Workspace changed; reopen Dotnet Manager")
           return
         end
-        local action = item._raw
-        if action == "project" then
-          select_paths_async(
-            child,
-            project.get_csproj_files_async,
-            "Startup Project",
-            function(path, c, captured)
-              local chosen =
-                workspace.select_project(path, { root = captured.root })
-              c:clear()
-              c:append("Startup project: " .. chosen.project)
-            end,
-            project.get_file_icon("App.csproj")
-          )
-        elseif action == "solution" then
-          select_paths_async(
-            child,
-            project.get_sln_files_async,
-            "Solution",
-            function(path, c)
-              workspace.set({ solution = path })
-              c:clear()
-              c:append("Solution: " .. workspace.current().solution)
-            end,
-            "󰨞 "
-          )
-        elseif action == "configuration" then
-          local configs =
-            require("dotnet-cli.config").get().build_configurations
-          select_paths(child, configs, "Configuration", function(name, c)
-            workspace.set({ configuration = name })
-            c:clear()
-            c:append("Configuration: " .. name)
-          end, "󰒓 ")
-        elseif action == "framework" then
-          choose_framework(child)
-        elseif action == "profile" then
-          local selected = workspace.current().project
-          if not selected then
-            child:append("Select a startup project first")
-            return
-          end
-          local profiles = launch.profiles(selected)
-          local names = {}
-          for _, profile in ipairs(profiles) do
-            table.insert(names, profile.name)
-          end
-          select_paths(child, names, "Launch Profile", function(name, c)
-            workspace.set({ profile = name })
-            c:clear()
-            c:append("Launch profile: " .. name)
-          end, " ")
+        local handler = handlers[item._raw]
+        if handler then
+          handler(child)
         end
       end,
     })

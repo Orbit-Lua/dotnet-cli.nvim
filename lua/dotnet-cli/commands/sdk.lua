@@ -1,5 +1,6 @@
 -- dotnet-cli.nvim commands: SDK Management
 local job = require("dotnet-cli.job")
+local sdk = require("dotnet-cli.sdk")
 
 local M = {}
 
@@ -41,6 +42,35 @@ M.spec_list_runtimes = {
   end,
 }
 
+---@param c table Comet context
+---@param existing string
+---@param version string
+local function update_global_json(c, existing, version)
+  if not sdk.set_global_json_version(version) then
+    c:append("✗  Failed to parse existing global.json")
+    return
+  end
+  c:clear()
+  c:append(
+    "✓  Updated global.json  (SDK " .. existing .. " → " .. version .. ")"
+  )
+end
+
+---@param c table Comet context
+---@param version string
+local function create_global_json(c, version)
+  local cmd = "dotnet new globaljson --sdk-version " .. version
+  c:clear()
+  c:append("$ " .. cmd)
+  c:append("")
+  local out = vim.fn.system(cmd)
+  if vim.v.shell_error == 0 then
+    c:append("✓  Created global.json  (SDK " .. version .. ")")
+  else
+    c:append("✗  Error: " .. out)
+  end
+end
+
 ---@type CometCommand
 M.spec_global_json = {
   name = "Global JSON",
@@ -49,18 +79,10 @@ M.spec_global_json = {
   desc = "pin SDK version via global.json",
   action = function(ctx)
     ctx:clear()
-
-    local existing_version
-    if vim.fn.filereadable("global.json") == 1 then
-      local ok, data = pcall(
-        vim.json.decode,
-        table.concat(vim.fn.readfile("global.json"), "\n")
-      )
-      if ok and data and data.sdk and data.sdk.version then
-        existing_version = data.sdk.version
-        ctx:append("Current SDK version: " .. existing_version)
-        ctx:append("")
-      end
+    local existing = sdk.global_json_version()
+    if existing then
+      ctx:append("Current SDK version: " .. existing)
+      ctx:append("")
     end
 
     local sdk_lines, ok = job.run_sync({ "dotnet", "--list-sdks" })
@@ -68,10 +90,9 @@ M.spec_global_json = {
       ctx:append("Failed to list .NET SDKs. Is dotnet installed?")
       return
     end
-
     local choices = {}
     for i = #sdk_lines, 1, -1 do
-      table.insert(choices, (sdk_lines[i]:gsub("[\r\n]", "")))
+      choices[#choices + 1] = (sdk_lines[i]:gsub("[\r\n]", ""))
     end
 
     ctx:select(choices, {
@@ -80,39 +101,10 @@ M.spec_global_json = {
         local version = choice:match("^(%S+)")
         if not version then
           c:append("Could not parse SDK version from: " .. choice)
-          return
-        end
-
-        if existing_version then
-          local raw = table.concat(vim.fn.readfile("global.json"), "\n")
-          local parse_ok, data = pcall(vim.json.decode, raw)
-          if parse_ok and data then
-            data.sdk = data.sdk or {}
-            data.sdk.version = version
-            local encoded = vim.json.encode(data)
-            vim.fn.writefile({ encoded }, "global.json")
-            c:clear()
-            c:append(
-              "✓  Updated global.json  (SDK "
-                .. existing_version
-                .. " → "
-                .. version
-                .. ")"
-            )
-          else
-            c:append("✗  Failed to parse existing global.json")
-          end
+        elseif existing then
+          update_global_json(c, existing, version)
         else
-          local cmd = "dotnet new globaljson --sdk-version " .. version
-          c:clear()
-          c:append("$ " .. cmd)
-          c:append("")
-          local out = vim.fn.system(cmd)
-          if vim.v.shell_error == 0 then
-            c:append("✓  Created global.json  (SDK " .. version .. ")")
-          else
-            c:append("✗  Error: " .. out)
-          end
+          create_global_json(c, version)
         end
       end,
     })

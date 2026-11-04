@@ -77,6 +77,47 @@ local function resolve_runner(opts)
   return M.runner(opts.root)
 end
 
+---Add the arguments of a test operation. VSTest options go to `dotnet test`;
+---Microsoft.Testing.Platform options go to the test application.
+---@param cmd string[]
+---@param mtp_args string[]
+---@param runner string vstest|mtp
+---@param mode string
+---@param filter? string
+local function mode_arguments(cmd, mtp_args, runner, mode, filter)
+  local target = runner == "mtp" and mtp_args or cmd
+  if mode == "discover" then
+    target[#target + 1] = "--list-tests"
+  elseif mode == "coverage" then
+    target[#target + 1] = runner == "mtp" and "--coverage"
+      or "--collect:XPlat Code Coverage"
+  elseif mode == "selected" and filter then
+    vim.list_extend(target, { "--filter", "FullyQualifiedName~" .. filter })
+  end
+end
+
+---Add the result directory and the TRX report of a run.
+---@param cmd string[]
+---@param mtp_args string[]
+---@param runner string vstest|mtp
+---@param mode string
+---@param opts table
+local function result_arguments(cmd, mtp_args, runner, mode, opts)
+  if not opts.results_dir then
+    return
+  end
+  vim.list_extend(cmd, { "--results-directory", opts.results_dir })
+  if mode == "discover" then
+    return
+  end
+  if runner == "vstest" then
+    local filename = opts.trx_filename or "dotnet-cli.trx"
+    vim.list_extend(cmd, { "--logger", "trx;LogFileName=" .. filename })
+  elseif runner == "mtp" and opts.capabilities and opts.capabilities.trx then
+    mtp_args[#mtp_args + 1] = "--report-trx"
+  end
+end
+
 ---Build a `dotnet test` command for the selected runner and operation.
 ---@param project string
 ---@param mode string all|discover|selected|coverage
@@ -102,43 +143,8 @@ M.command = function(project, mode, opts)
   end
 
   local mtp_args = {}
-  if mode == "discover" then
-    if runner == "mtp" then
-      table.insert(mtp_args, "--list-tests")
-    else
-      table.insert(cmd, "--list-tests")
-    end
-  elseif mode == "coverage" then
-    if runner == "mtp" then
-      table.insert(mtp_args, "--coverage")
-    else
-      table.insert(cmd, "--collect:XPlat Code Coverage")
-    end
-  elseif mode == "selected" and opts.filter then
-    if runner == "mtp" then
-      vim.list_extend(
-        mtp_args,
-        { "--filter", "FullyQualifiedName~" .. opts.filter }
-      )
-    else
-      vim.list_extend(cmd, { "--filter", "FullyQualifiedName~" .. opts.filter })
-    end
-  end
-
-  if opts.results_dir then
-    vim.list_extend(cmd, { "--results-directory", opts.results_dir })
-    if runner == "vstest" and mode ~= "discover" then
-      local filename = opts.trx_filename or "dotnet-cli.trx"
-      vim.list_extend(cmd, { "--logger", "trx;LogFileName=" .. filename })
-    elseif
-      runner == "mtp"
-      and mode ~= "discover"
-      and opts.capabilities
-      and opts.capabilities.trx
-    then
-      table.insert(mtp_args, "--report-trx")
-    end
-  end
+  mode_arguments(cmd, mtp_args, runner, mode, opts.filter)
+  result_arguments(cmd, mtp_args, runner, mode, opts)
   if #mtp_args > 0 then
     if not mtp_native then
       table.insert(cmd, "--")

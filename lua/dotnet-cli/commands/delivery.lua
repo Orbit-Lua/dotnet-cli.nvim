@@ -44,6 +44,68 @@ M.item_cmd = function(template, name, output)
   return { "dotnet", "new", template, "--name", name, "--output", output }
 end
 
+-- Each prompt sets one option; `parse` turns the answer into its value.
+local publish_fields = {
+  { key = "configuration", prompt = "Configuration (Debug/Release): " },
+  { key = "profile", prompt = "Publish profile name or path: " },
+  { key = "runtime", prompt = "Runtime ID (for example linux-x64): " },
+  {
+    key = "self_contained",
+    prompt = "Self-contained? (true/false): ",
+    parse = function(value)
+      return value == "true"
+    end,
+  },
+  {
+    key = "single_file",
+    prompt = "Single-file? (true/false): ",
+    parse = function(value)
+      return value == "true"
+    end,
+  },
+  { key = "output", prompt = "Output directory: " },
+}
+
+local pack_fields = {
+  { key = "configuration", prompt = "Configuration (Debug/Release): " },
+  { key = "output", prompt = "Output directory: " },
+}
+
+local function run_delivery(ctx, project, publish, options)
+  common.run(
+    ctx,
+    publish and M.publish_cmd(project, options) or M.pack_cmd(project, options),
+    { cwd = workspace.current().root }
+  )
+end
+
+---Ask each option in turn; an empty answer keeps the default.
+local function prompt_options(ctx, project, publish)
+  local fields = publish and publish_fields or pack_fields
+  local options = {}
+  local function prompt(index)
+    local field = fields[index]
+    if not field then
+      run_delivery(ctx, project, publish, options)
+      return
+    end
+    vim.ui.input({ prompt = field.prompt }, function(value)
+      if value and vim.trim(value) ~= "" then
+        value = vim.trim(value)
+        if field.parse then
+          options[field.key] = field.parse(value)
+        else
+          options[field.key] = value
+        end
+      end
+      vim.schedule(function()
+        prompt(index + 1)
+      end)
+    end)
+  end
+  prompt(1)
+end
+
 local function ask_options(ctx, project, publish)
   local choices = { "Run with defaults", "Configure options" }
   vim.ui.select(choices, {
@@ -54,65 +116,10 @@ local function ask_options(ctx, project, publish)
     end,
   }, function(selected)
     if not selected or selected == "Run with defaults" then
-      common.run(
-        ctx,
-        publish and M.publish_cmd(project) or M.pack_cmd(project),
-        {
-          cwd = workspace.current().root,
-        }
-      )
+      run_delivery(ctx, project, publish)
       return
     end
-    local options = {}
-    local fields = publish
-        and {
-          { "Configuration", "Configuration (Debug/Release): " },
-          { "Publish Profile", "Publish profile name or path: " },
-          { "Runtime ID", "Runtime ID (for example linux-x64): " },
-          { "Self-contained", "Self-contained? (true/false): " },
-          { "Single-file", "Single-file? (true/false): " },
-          { "Output directory", "Output directory: " },
-        }
-      or {
-        { "Configuration", "Configuration (Debug/Release): " },
-        { "Output directory", "Output directory: " },
-      }
-    local function prompt(index)
-      local field = fields[index]
-      if not field then
-        common.run(
-          ctx,
-          publish and M.publish_cmd(project, options)
-            or M.pack_cmd(project, options),
-          {
-            cwd = workspace.current().root,
-          }
-        )
-        return
-      end
-      vim.ui.input({ prompt = field[2] }, function(value)
-        if value and vim.trim(value) ~= "" then
-          value = vim.trim(value)
-          if field[1] == "Configuration" then
-            options.configuration = value
-          elseif field[1] == "Publish Profile" then
-            options.profile = value
-          elseif field[1] == "Runtime ID" then
-            options.runtime = value
-          elseif field[1] == "Output directory" then
-            options.output = value
-          elseif field[1] == "Self-contained" then
-            options.self_contained = value == "true"
-          elseif field[1] == "Single-file" then
-            options.single_file = value == "true"
-          end
-        end
-        vim.schedule(function()
-          prompt(index + 1)
-        end)
-      end)
-    end
-    prompt(1)
+    prompt_options(ctx, project, publish)
   end)
 end
 
