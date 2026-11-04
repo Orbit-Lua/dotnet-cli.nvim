@@ -91,10 +91,10 @@ describe("debug adapter startup", function()
       dotnet_root = root,
     })
     assert.is_true(vim.wait(500, function()
-      return #messages > 0
+      return #messages > 1
     end))
     assert.is_false(called)
-    assert.is_truthy(messages[1]:find("CS1002", 1, true))
+    assert.is_truthy(messages[#messages]:find("CS1002", 1, true))
   end)
 
   it("reports failure to create the build process", function()

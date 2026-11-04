@@ -15,8 +15,11 @@ elseif arg[3] == "debug" then
     started = started + 1
     error("No process may start for a stale project")
   end
-  vim.notify = function(value)
-    message = value
+  -- INFO messages are launch progress; keep the first failure.
+  vim.notify = function(value, level)
+    if not message and level and level >= vim.log.levels.WARN then
+      message = value
+    end
   end
   assert(require("dotnet-cli").setup_dap({ adapter_path = vim.v.progpath }))
   require("dotnet-cli.commands.register").setup("Dotnet")

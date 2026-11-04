@@ -79,9 +79,12 @@ describe(".NET DAP integration", function()
     end
     local function launched_adapter()
       local adapter
+      local launch = { request = "launch", dotnet_project = vim.fs.joinpath(temp, "App.csproj"), dotnet_root = temp }
       dap.adapters.coreclr(function(value)
         adapter = value
-      end, { request = "launch", dotnet_project = vim.fs.joinpath(temp, "App.csproj"), dotnet_root = temp })
+        -- nvim-dap creates the session inside the callback.
+        dap.listeners.on_session["dotnet-cli"](nil, { config = launch })
+      end, launch)
       assert.is_true(vim.wait(1000, function() return adapter ~= nil end))
       return adapter
     end

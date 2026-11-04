@@ -40,8 +40,11 @@ describe("startup project resolution", function()
       },
     }
     launches, messages, pending = {}, {}, {}
-    vim.notify = function(message)
-      messages[#messages + 1] = message
+    -- Record results only; INFO messages are launch progress.
+    vim.notify = function(message, level)
+      if level and level >= vim.log.levels.WARN then
+        messages[#messages + 1] = message
+      end
     end
     vim.ui.select = function()
       error("Unambiguous applications must not prompt")

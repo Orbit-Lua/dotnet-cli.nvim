@@ -48,11 +48,15 @@ local ok, err = pcall(function()
       adapter_path = vim.env.DOTNET_TEST_ADAPTER,
     })
   )
-  local messages = {}
-  vim.notify = function(message, level)
+  local messages, progress = {}, {}
+  vim.notify = function(message, level, opts)
+    if opts and opts.title == "Dotnet" then
+      progress[#progress + 1] = { message = message, replace = opts.replace }
+    end
     if level and level >= vim.log.levels.WARN then
       messages[#messages + 1] = message
     end
+    return #progress
   end
   local stopped
   dap.listeners.after.event_stopped["native-test"] = function(session, body)
@@ -111,6 +115,34 @@ local ok, err = pcall(function()
     end),
     "disconnect timed out"
   )
+  -- The launch reported each phase on one notification through the real
+  -- nvim-dap listeners.
+  assert(
+    vim.wait(5000, function()
+      return #progress >= 5
+    end),
+    "launch status did not finish: " .. vim.inspect(progress)
+  )
+  local phases = {
+    "^Resolving the startup project$",
+    "^Building App$",
+    "^Starting netcoredbg$",
+    "^Debugging App$",
+    "^App exited with code %-?%d+$",
+  }
+  for index, pattern in ipairs(phases) do
+    local entry = progress[index]
+    local final = index == 5 and entry.message == "Debug session ended"
+    assert(
+      final or entry.message:match(pattern),
+      "unexpected launch phase: " .. vim.inspect(progress)
+    )
+    assert(
+      entry.replace == (index > 1 and index - 1 or nil),
+      "phase does not replace the previous message: " .. vim.inspect(progress)
+    )
+  end
+  assert(#progress == 5, "extra launch messages: " .. vim.inspect(progress))
   local ready = false
   child = vim.system({ "dotnet", config.program }, {
     cwd = root,

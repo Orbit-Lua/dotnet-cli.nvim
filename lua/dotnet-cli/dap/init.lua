@@ -1,5 +1,6 @@
 -- Optional nvim-dap registration for netcoredbg.
 local adapter = require("dotnet-cli.dap.adapter")
+local dap_status = require("dotnet-cli.dap.status")
 local launch_config = require("dotnet-cli.dap.config")
 
 local M = {}
@@ -12,23 +13,41 @@ M.config = launch_config.launch
 
 local listener = "dotnet-cli"
 
+---Resolve the startup project and report the resolve phase. The callback gets
+---the launch configuration, or nil after the status reported the failure.
+---@param done fun(config?: DotnetCliLaunchConfig)
+local function resolve(done)
+  local status = dap_status.new()
+  status:report("resolve", "Resolving the startup project")
+  require("dotnet-cli.startup").resolve(function(context, metadata, err)
+    local config
+    if context then
+      config, err = M.config(context, metadata)
+    end
+    if not config then
+      status:fail(
+        err or "The startup project could not be resolved",
+        vim.log.levels.WARN
+      )
+      done(nil)
+      return
+    end
+    config.dotnet_status = status.key
+    done(config)
+  end)
+end
+
 ---Resolve the startup project from inside the nvim-dap `on_config` coroutine.
 ---@param dap table the nvim-dap module
 ---@param config dap.Configuration
 ---@return dap.Configuration
 local function resolve_launch(dap, config)
   local thread = coroutine.running()
-  require("dotnet-cli.startup").resolve(function(context, metadata, err)
-    coroutine.resume(thread, context, metadata, err)
+  resolve(function(resolved)
+    coroutine.resume(thread, resolved)
   end)
-  local context, metadata, err = coroutine.yield()
-  if not context then
-    vim.notify(err, vim.log.levels.WARN, { title = "Dotnet" })
-    return vim.tbl_extend("force", config, { program = dap.ABORT })
-  end
-  local resolved, config_err = M.config(context, metadata)
+  local resolved = coroutine.yield()
   if not resolved then
-    vim.notify(config_err, vim.log.levels.WARN, { title = "Dotnet" })
     return vim.tbl_extend("force", config, { program = dap.ABORT })
   end
   return vim.tbl_extend("force", config, resolved)
@@ -38,9 +57,13 @@ end
 local function install_listeners(dap)
   dap.listeners = dap.listeners or {}
   dap.listeners.on_session = dap.listeners.on_session or {}
-  dap.listeners.on_session[listener] = function()
+  -- One listener owns both duties; a second one under this key would
+  -- replace the console restore.
+  dap.listeners.on_session[listener] = function(old, new)
+    dap_status.on_session(old, new)
     adapter.restore_console(dap)
   end
+  dap_status.install(dap)
   vim.api.nvim_create_autocmd("VimLeavePre", {
     group = vim.api.nvim_create_augroup("DotnetCliDap", { clear = true }),
     callback = function()
@@ -137,17 +160,10 @@ function M.launch()
   if not dap then
     return false, err
   end
-  require("dotnet-cli.startup").resolve(function(context, metadata, resolve_err)
-    if not context then
-      vim.notify(resolve_err, vim.log.levels.WARN, { title = "Dotnet" })
-      return
+  resolve(function(config)
+    if config then
+      dap.run(config)
     end
-    local config, config_err = M.config(context, metadata)
-    if not config then
-      vim.notify(config_err, vim.log.levels.WARN, { title = "Dotnet" })
-      return
-    end
-    dap.run(config)
   end)
   return true
 end

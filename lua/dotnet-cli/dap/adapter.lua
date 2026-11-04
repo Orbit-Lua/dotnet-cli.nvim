@@ -1,5 +1,6 @@
 -- The netcoredbg executable and the coreclr adapter that builds before launch.
 local build = require("dotnet-cli.build")
+local dap_status = require("dotnet-cli.dap.status")
 local job = require("dotnet-cli.job")
 local settings = require("dotnet-cli.config")
 local workspace = require("dotnet-cli.workspace")
@@ -156,12 +157,50 @@ local function build_project(config, done)
   return id ~= nil and id > 0
 end
 
+---Build, then start netcoredbg, and report each phase on the status of the
+---configuration. A status that the resolve phase created moves on; a
+---configuration without one gets a new status.
+---@param adapter dap.ExecutableAdapter
+---@param callback fun(adapter: dap.Adapter)
+---@param config DotnetCliLaunchConfig
+local function launch(adapter, callback, config)
+  local status = dap_status.get(config.dotnet_status) or dap_status.new()
+  config.dotnet_status = status.key
+  if not config.dotnet_project then
+    status:fail("No .NET startup project selected")
+    return
+  end
+  status.name = vim.fn.fnamemodify(config.dotnet_project, ":t:r")
+  status:report("build", "Building " .. status.name)
+
+  local started = build_project(config, function(code, output)
+    if code ~= 0 then
+      status:fail(dap_status.build_summary(output))
+      return
+    end
+    if not adapter.options.detached then
+      use_utf8_console()
+    end
+    status:report("start", "Starting netcoredbg")
+    callback(adapter)
+    -- nvim-dap creates the session inside the callback; without one the
+    -- adapter failed to spawn and nvim-dap has reported why.
+    if not status.bound then
+      status:fail("Debugger did not start")
+    end
+  end)
+  if not started then
+    status:fail("Could not start the .NET build; check the dotnet executable")
+  end
+end
+
 ---Create the coreclr adapter function. A launch builds the project first and
 ---starts netcoredbg only after a successful build.
 ---@param executable string
 ---@return fun(callback: fun(adapter: dap.Adapter), config: DotnetCliLaunchConfig)
 function M.new(executable)
   return function(callback, config)
+    ---@type dap.ExecutableAdapter
     local adapter = {
       type = "executable",
       command = executable,
@@ -177,31 +216,7 @@ function M.new(executable)
       callback(adapter)
       return
     end
-    if not config.dotnet_project then
-      vim.notify("No .NET startup project selected", vim.log.levels.ERROR)
-      return
-    end
-
-    local started = build_project(config, function(code, output)
-      if code ~= 0 then
-        vim.notify(
-          ".NET build failed; debugger was not started\n"
-            .. table.concat(output, "\n"),
-          vim.log.levels.ERROR
-        )
-        return
-      end
-      if not adapter.options.detached then
-        use_utf8_console()
-      end
-      callback(adapter)
-    end)
-    if not started then
-      vim.notify(
-        "Could not start the .NET build; check the dotnet executable",
-        vim.log.levels.ERROR
-      )
-    end
+    launch(adapter, callback, config)
   end
 end
 
