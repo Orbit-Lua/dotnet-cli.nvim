@@ -17,7 +17,7 @@ local listener = "dotnet-cli"
 local sticky = { build = true, start = true }
 
 ---@class DotnetCliDapStatus
----@field key string Value of `config.dotnet_status`.
+---@field key string Value of `config.dotnet_status` and the notification `id`.
 ---@field phase? DotnetCliDapPhase Last reported phase.
 ---@field name? string Project name shown in messages.
 ---@field bound boolean Whether an nvim-dap session carries this status.
@@ -58,16 +58,14 @@ function Status:report(phase, message, level)
     return
   end
   self.phase = phase
-  -- FIXME: Noice's snacks backend maps only `id` from the Noice handle to
-  -- the snacks notification and passes `replace` through unmapped, so snacks
-  -- adds a new message and a sticky phase stays on screen. Pass the handle id
-  -- as `id` too; nvim-notify ignores it and keeps using `replace`.
-  local handle = self.handle
-  local id = type(handle) == "table" and handle.id or nil
-  if type(handle) == "number" or type(handle) == "string" then
-    id = handle
-  end
-  local opts = { title = M.title, replace = handle, id = id }
+  -- FIXME: Noice's snacks backend passes `replace` through without mapping
+  -- the Noice handle to the snacks notification, so snacks adds a new message
+  -- and a sticky phase stays on screen. Every phase also passes the status key
+  -- as `id`: snacks creates or updates the message with that id, and Noice
+  -- passes an id that names none of its messages through unchanged. The key
+  -- must stay a string, because a number can match a Noice message id.
+  -- nvim-notify ignores `id` and keeps using `replace`.
+  local opts = { title = M.title, replace = self.handle, id = self.key }
   if sticky[phase] then
     opts.timeout = false
   end

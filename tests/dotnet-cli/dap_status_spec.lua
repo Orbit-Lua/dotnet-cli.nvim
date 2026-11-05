@@ -111,6 +111,7 @@ describe("debug launch status", function()
     for index, call in ipairs(calls) do
       assert.equals("Dotnet", call.opts.title)
       assert.equals(vim.log.levels.INFO, call.level)
+      assert.equals(calls[1].opts.id, call.opts.id)
       if index == 1 then
         assert.is_nil(call.opts.replace)
       else
@@ -125,22 +126,22 @@ describe("debug launch status", function()
   end)
 
   it("replaces each phase in a notifier that matches messages by id", function()
-    -- Noice with its snacks backend returns { id = n } and replaces only by id.
+    -- Noice with its snacks backend: snacks keys each message by `id`, or by a
+    -- new number without one. Noice returns its own message number and passes
+    -- `replace` through unmapped, so `replace` names no snacks message.
     local shown, next_id = {}, 0
     vim.notify = function(message, _, opts)
       calls[#calls + 1] = { message = message, opts = opts }
-      local id = opts.id
-      if not (id and shown[id]) then
-        next_id = next_id + 1
-        id = next_id
-      end
-      shown[id] = { message = message, sticky = opts.timeout == false }
-      return { id = id }
+      next_id = next_id + 1
+      shown[opts.id or next_id] = { message = message, sticky = opts.timeout == false }
+      return { id = next_id }
     end
     assert.is_true(require("dotnet-cli.dap").launch())
     wait_calls(3)
     finish_session(0)
-    assert.same({ [1] = { message = "App exited with code 0", sticky = false } }, shown)
+    local key = calls[1].opts.id
+    assert.is_string(key)
+    assert.same({ [key] = { message = "App exited with code 0", sticky = false } }, shown)
   end)
 
   it("carries the resolve phase of the registered launch configuration", function()
