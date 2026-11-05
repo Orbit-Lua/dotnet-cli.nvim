@@ -1,6 +1,7 @@
 -- One updating notification for each .NET launch session. Each phase replaces
--- the previous message through the `replace` option that nvim-notify and
--- snacks.nvim accept. A notifier that ignores it shows one message per phase.
+-- the previous message through the `replace` option of nvim-notify and the
+-- `id` option of snacks.nvim and Noice. A notifier that ignores both shows one
+-- message per phase.
 local M = {}
 
 M.title = "Dotnet"
@@ -57,7 +58,16 @@ function Status:report(phase, message, level)
     return
   end
   self.phase = phase
-  local opts = { title = M.title, replace = self.handle }
+  -- FIXME: Noice's snacks backend maps only `id` from the Noice handle to
+  -- the snacks notification and passes `replace` through unmapped, so snacks
+  -- adds a new message and a sticky phase stays on screen. Pass the handle id
+  -- as `id` too; nvim-notify ignores it and keeps using `replace`.
+  local handle = self.handle
+  local id = type(handle) == "table" and handle.id or nil
+  if type(handle) == "number" or type(handle) == "string" then
+    id = handle
+  end
+  local opts = { title = M.title, replace = handle, id = id }
   if sticky[phase] then
     opts.timeout = false
   end

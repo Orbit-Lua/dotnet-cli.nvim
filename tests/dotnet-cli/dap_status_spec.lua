@@ -124,6 +124,25 @@ describe("debug launch status", function()
     end
   end)
 
+  it("replaces each phase in a notifier that matches messages by id", function()
+    -- Noice with its snacks backend returns { id = n } and replaces only by id.
+    local shown, next_id = {}, 0
+    vim.notify = function(message, _, opts)
+      calls[#calls + 1] = { message = message, opts = opts }
+      local id = opts.id
+      if not (id and shown[id]) then
+        next_id = next_id + 1
+        id = next_id
+      end
+      shown[id] = { message = message, sticky = opts.timeout == false }
+      return { id = id }
+    end
+    assert.is_true(require("dotnet-cli.dap").launch())
+    wait_calls(3)
+    finish_session(0)
+    assert.same({ [1] = { message = "App exited with code 0", sticky = false } }, shown)
+  end)
+
   it("carries the resolve phase of the registered launch configuration", function()
     local resolved
     local thread = coroutine.create(function()
