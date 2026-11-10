@@ -88,10 +88,10 @@ This plugin runs local SDK-style .NET workflows in Neovim. Keep .NET behavior he
 - `just test-debug` builds a .NET 10 fixture and debugs it with netcoredbg.
 - Run one spec with `just test-spec tests/dotnet-cli/<name>_spec.lua`.
 - `make all` rewrites formatting before it runs the same checks.
-- `tests/run.lua` runs each spec in its own Neovim process and reports through telemetry.nvim.
+- `tests/run.lua` runs each spec in its own Neovim process and reports through telemetry.lua.
 - Each spec child checks its own result. A failed or skipped test, a spec with no tests, or an editor error fails it.
 - Load test dependencies from `$DOTNET_TEST_PLUGINS`, or else from the lazy.nvim data directory.
-  - The dependencies are plenary.nvim, comet.nvim, nvim-dap and telemetry.nvim.
+  - The dependencies are plenary.nvim, comet.nvim, nvim-dap and telemetry.lua.
   - `DOTNET_TEST_COMET` and `DOTNET_TEST_TELEMETRY` select local checkouts.
   - `DOTNET_TEST_ADAPTER` selects the netcoredbg executable of `just test-debug`.
 - A missing dependency fails the run. Report each check that you could not run.
@@ -121,7 +121,7 @@ This plugin runs local SDK-style .NET workflows in Neovim. Keep .NET behavior he
 - Check out release jobs with `fetch-depth: 0`, so that the ancestry check sees the default branch.
 - Keep release secrets in an environment that allows only the release tags. Protect the tags with a tag ruleset.
 - CI runs on Linux only. Run `just all`, `just test-integration` and `just test-debug` on Windows before each push.
-- Pin each CI test plugin to the commit in the OrbitVim lock file. telemetry.nvim is the exception: CI fetches its default branch.
+- Pin each CI test plugin to the commit in the OrbitVim lock file.
 
 ## Docs
 
