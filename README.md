@@ -2,7 +2,7 @@
 
 Build, run, test and debug SDK-style .NET projects from a Neovim manager.
 
-[![Validate dotnet-cli.nvim](https://github.com/Orbit-Lua/dotnet-cli.nvim/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/Orbit-Lua/dotnet-cli.nvim/actions/workflows/validate.yml) [![Neovim](https://img.shields.io/badge/Neovim-0.11%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io/)
+[![Validate](https://github.com/Orbit-Lua/dotnet-cli.nvim/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/Orbit-Lua/dotnet-cli.nvim/actions/workflows/validate.yml?query=branch%3Amain) [![Neovim](https://img.shields.io/badge/Neovim-0.11%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io/)
 
 The manager lets you select a startup project and run the `dotnet` workflows of local console, library and ASP.NET Core development. Optional [nvim-dap](https://github.com/mfussenegger/nvim-dap) integration builds the project and starts `netcoredbg`.
 

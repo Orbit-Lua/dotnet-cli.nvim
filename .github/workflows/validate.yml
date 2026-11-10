@@ -1,4 +1,4 @@
-name: Validate dotnet-cli.nvim
+name: Validate
 
 on:
   push:
