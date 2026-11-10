@@ -18,11 +18,11 @@ env:
   STYLUA_VERSION: 2.4.0
   NETCOREDBG_VERSION: 3.2.0-1092
   # Test dependency revisions match the OrbitVim lock file. telemetry.lua is
-  # pinned to its 0.1.0 release.
+  # pinned to its 0.1.1 release.
   PLENARY_REVISION: 74b06c6c75e4eeb3108ec01852001636d85a932b
   COMET_REVISION: b30afe9e5fcd5445804e584eb1cadf68c64873fe
   NVIM_DAP_REVISION: 8aba1e3805438ee6f74207e0b7385ef951bb9945
-  TELEMETRY_REVISION: f5d4e6dccc596a1c0968077c33ad0365fc24d1dd
+  TELEMETRY_REVISION: d6fdcf1d0ceb578c7ffc92099c46df9747bf41d1
 
 jobs:
   # Windows runs the same recipes locally before each push.
