@@ -3,6 +3,97 @@
 
 local M = {}
 
+---Find the last byte of the escape sequence that starts at `start`.
+---@param text string
+---@param start integer index of the ESC byte
+---@return integer? stop nil while the sequence is incomplete
+local function sequence_end(text, start)
+  local kind = text:sub(start + 1, start + 1)
+  if kind == "" then
+    return nil
+  end
+  if kind == "[" then
+    local _, stop = text:find("^[0-?]*[ -/]*[@-~]", start + 2)
+    if stop then
+      return stop
+    end
+    if text:find("^[0-?]*[ -/]*$", start + 2) then
+      return nil
+    end
+    return start + 1
+  end
+  if kind:find("[%]PX%^_]") then
+    local position = start + 2
+    while true do
+      local stop = text:find("[\a\27]", position)
+      if not stop then
+        return nil
+      end
+      if text:sub(stop, stop) == "\a" then
+        return stop
+      end
+      local next_byte = text:sub(stop + 1, stop + 1)
+      if next_byte == "" then
+        return nil
+      end
+      if next_byte == "\\" then
+        return stop + 1
+      end
+      position = stop + 1
+    end
+  end
+  local _, stop = text:find("^[ -/]*[0-~]", start + 1)
+  if stop then
+    return stop
+  end
+  if text:find("^[ -/]*$", start + 1) then
+    return nil
+  end
+  return start
+end
+
+---Remove escape sequences from one line of terminal output.
+---@param text string
+---@return string output
+---@return string? rest incomplete sequence at the end of `text`
+---@return boolean stripped
+local function strip_sequences(text)
+  local parts, position, stripped = {}, 1, false
+  while true do
+    local start = text:find("\27", position, true)
+    if not start then
+      parts[#parts + 1] = text:sub(position)
+      return table.concat(parts), nil, stripped
+    end
+    parts[#parts + 1] = text:sub(position, start - 1)
+    stripped = true
+    local stop = sequence_end(text, start)
+    if not stop then
+      return table.concat(parts), text:sub(start), true
+    end
+    position = stop + 1
+  end
+end
+
+---Create a filter that removes terminal control sequences from PTY output.
+---The filter keeps a sequence that a job chunk splits until the next chunk, and
+---drops a line that held only control sequences.
+---@return fun(lines: string[]): string[]
+M.terminal_filter = function()
+  local pending = ""
+  return function(lines)
+    local output = {}
+    for index, line in ipairs(lines) do
+      local text, rest, stripped = strip_sequences(pending .. line)
+      pending = index == #lines and rest or ""
+      if not stripped or text:gsub("\r", "") ~= "" then
+        output[#output + 1] = text
+      end
+    end
+    return output
+  end
+end
+
 ---Parse the tabular output of `dotnet new list` into template records.
 ---@param lines string[]
 ---@return {name: string, short_name: string}[]

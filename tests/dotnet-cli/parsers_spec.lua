@@ -1,6 +1,54 @@
 local parsers = require("dotnet-cli.parsers")
 
 describe("parsers", function()
+  describe("terminal_filter", function()
+    it("removes CSI, OSC and short sequences and keeps the text", function()
+      local filter = parsers.terminal_filter()
+      assert.are.same(
+        { "STDOUT 中文測試", "紅色 text" },
+        filter({
+          "\27[?25l\27[2J\27[m\27[HSTDOUT 中文測試",
+          "\27[31m紅色\27[0m\27(B text\27]0;title\27\\",
+        })
+      )
+    end)
+
+    it("drops lines that held only control sequences", function()
+      local filter = parsers.terminal_filter()
+      assert.are.same(
+        { "before", "", "after" },
+        filter({
+          "before",
+          "\27[?9001h\27[?1004h",
+          "",
+          "\27]0;C:\\Program Files\\dotnet\\dotnet.EXE\a\27[?25h\r",
+          "after",
+        })
+      )
+    end)
+
+    it("joins a sequence that two chunks split", function()
+      local filter = parsers.terminal_filter()
+      assert.are.same({ "one" }, filter({ "one\27[3" }))
+      assert.are.same({ "two" }, filter({ "1mtwo" }))
+      assert.are.same({ "three" }, filter({ "three\27]0;ti" }))
+      assert.are.same({ "four" }, filter({ "tle\afour" }))
+      assert.are.same({ "five" }, filter({ "five\27" }))
+      assert.are.same({ "six" }, filter({ "[0msix" }))
+    end)
+
+    it("does not carry an unfinished sequence past a line break", function()
+      local filter = parsers.terminal_filter()
+      assert.are.same({ "one", "two" }, filter({ "one\27]0;title", "two" }))
+    end)
+
+    it("leaves plain output unchanged", function()
+      local filter = parsers.terminal_filter()
+      local lines = { "建置成功。", "", "[0m is plain text", "" }
+      assert.are.same(lines, filter(lines))
+    end)
+  end)
+
   describe("templates", function()
     it("parses dotnet new list output", function()
       local lines = {

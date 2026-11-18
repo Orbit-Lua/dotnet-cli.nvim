@@ -36,6 +36,18 @@ local function normalize_lines(data)
   return lines
 end
 
+---Create the output reader of one stream. A PTY also carries terminal control
+---sequences, which the plain-text output panel cannot render.
+---@param interactive boolean?
+---@return fun(data: string[]): string[]
+local function output_reader(interactive)
+  local filter = interactive and parsers.terminal_filter() or nil
+  return function(data)
+    local lines = normalize_lines(data)
+    return filter and filter(lines) or lines
+  end
+end
+
 ---Start a structured process specification.
 ---@param spec JobSpec
 ---@param ctx? CometCtx
@@ -45,6 +57,8 @@ M.start = function(spec, ctx)
     type(spec) == "table" and type(spec.argv) == "table",
     "spec.argv is required"
   )
+  local read_stdout = output_reader(spec.interactive)
+  local read_stderr = output_reader(spec.interactive)
   local options = {
     stdout_buffered = spec.stdout_buffered or false,
     stderr_buffered = spec.stderr_buffered or false,
@@ -53,14 +67,14 @@ M.start = function(spec, ctx)
     clear_env = spec.clear_env,
     pty = spec.interactive or false,
     on_stdout = function(id, data, event)
-      data = normalize_lines(data)
+      data = read_stdout(data)
       emit(ctx, "write", data)
       if spec.on_stdout then
         spec.on_stdout(id, data, event)
       end
     end,
     on_stderr = function(id, data, event)
-      data = normalize_lines(data)
+      data = read_stderr(data)
       emit(ctx, "write", data)
       if spec.on_stderr then
         spec.on_stderr(id, data, event)
